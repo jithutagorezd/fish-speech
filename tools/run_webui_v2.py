@@ -114,4 +114,4 @@ if __name__ == "__main__":
         theme=args.theme,
         whisper_model_dir=str(args.whisper_model_dir),
     )
-    app.launch()
+    app.launch(server_name="0.0.0.0", share=True)
