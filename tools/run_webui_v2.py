@@ -45,6 +45,13 @@ def parse_args():
         default="checkpoints/whisper-small-pt",
         help="Path to local Whisper model directory (e.g. for Auto-transcribe).",
     )
+    parser.add_argument(
+        "--quantization",
+        type=str,
+        default="none",
+        choices=["none", "int8", "int4"],
+        help="Dynamic quantization to apply (none, int8, int4).",
+    )
     return parser.parse_args()
 
 
@@ -68,6 +75,7 @@ if __name__ == "__main__":
         device=args.device,
         precision=args.precision,
         compile=args.compile,
+        quantization=args.quantization,
     )
 
     logger.info("Loading VQ-GAN model...")

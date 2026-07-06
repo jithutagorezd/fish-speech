@@ -115,10 +115,10 @@ From the repository root:
 ```bash
 
 Using webui
-python tools/run_webui.py --llama-checkpoint-path checkpoints/s2-pro --decoder-checkpoint-path checkpoints/s2-pro/codec.pth --whisper-model-dir checkpoints/whisper-small-pt
+cd 
 
 Using webui_v2 (Modify for Long contents)
-python tools/run_webui_v2.py --llama-checkpoint-path checkpoints/s2-pro --decoder-checkpoint-path checkpoints/s2-pro/codec.pth --whisper-model-dir checkpoints/whisper-small-pt
+python3 tools/run_webui_v2.py --llama-checkpoint-path checkpoints/s2-pro --decoder-checkpoint-path checkpoints/s2-pro/codec.pth --whisper-model-dir checkpoints/whisper-small-pt
 
 
 ```

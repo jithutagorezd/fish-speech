@@ -359,8 +359,25 @@ def generate(
     return seq
 
 
-def init_model(checkpoint_path, device, precision, compile=False):
+def init_model(checkpoint_path, device, precision, compile=False, quantization="none"):
     model = DualARTransformer.from_pretrained(checkpoint_path, load_weights=True)
+
+    if quantization == "int8":
+        from tools.llama.quantize import WeightOnlyInt8QuantHandler
+        logger.info("Dynamically quantizing model to int8...")
+        quantizer = WeightOnlyInt8QuantHandler(model)
+        state_dict = quantizer.create_quantized_state_dict()
+        model = quantizer.convert_for_runtime()
+        model.load_state_dict(state_dict, strict=False, assign=True)
+        logger.info("Int8 dynamic quantization complete.")
+    elif quantization == "int4":
+        from tools.llama.quantize import WeightOnlyInt4QuantHandler
+        logger.info("Dynamically quantizing model to int4 (groupsize 128)...")
+        quantizer = WeightOnlyInt4QuantHandler(model, groupsize=128)
+        state_dict = quantizer.create_quantized_state_dict()
+        model = quantizer.convert_for_runtime()
+        model.load_state_dict(state_dict, strict=False, assign=True)
+        logger.info("Int4 dynamic quantization complete.")
 
     model = model.to(device=device, dtype=precision)
     logger.info(f"Restored model from checkpoint")
@@ -750,13 +767,14 @@ def launch_thread_safe_queue(
     device,
     precision,
     compile: bool = False,
+    quantization: str = "none",
 ):
     input_queue = queue.Queue()
     init_event = threading.Event()
 
     def worker():
         model, decode_one_token = init_model(
-            checkpoint_path, device, precision, compile=compile
+            checkpoint_path, device, precision, compile=compile, quantization=quantization
         )
         with torch.device(device):
             model.setup_caches(
