@@ -17,7 +17,31 @@ class VQManager:
         logger.info(f"VQ features: {codes.shape}")
 
         if isinstance(self.decoder_model, DAC):
-            return self.decoder_model.from_indices(codes[None])[0].squeeze()
+            # For large sequences, decode in chunks to save memory
+            codes_shape = codes.shape
+            if codes_shape[-1] > 512:  # Large token sequence
+                logger.info(f"Large sequence detected ({codes_shape[-1]} tokens), using chunked decoding...")
+                chunk_size = 256
+                decoded_chunks = []
+                
+                for i in range(0, codes_shape[-1], chunk_size):
+                    chunk = codes[:, i:i+chunk_size]
+                    logger.info(f"Decoding chunk {i//chunk_size + 1}: tokens [{i}:{i+chunk_size}]")
+                    
+                    with torch.no_grad():
+                        decoded_chunk = self.decoder_model.from_indices(chunk[None])[0]
+                    decoded_chunks.append(decoded_chunk)
+                    
+                    # Clear memory between chunks
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                
+                # Concatenate chunks
+                result = torch.cat(decoded_chunks, dim=-1).squeeze()
+                return result
+            else:
+                # Small sequence, decode normally
+                return self.decoder_model.from_indices(codes[None])[0].squeeze()
 
         raise ValueError(f"Unknown model type: {type(self.decoder_model)}")
 

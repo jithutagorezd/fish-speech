@@ -106,15 +106,41 @@ class TTSInferenceEngine(ReferenceLoader, VQManager):
 
             result: GenerateResponse = wrapped_result.response
             if result.action != "next":
-                segment = self.get_audio_segment(result)
+                # Decode chunk immediately and free memory
+                try:
+                    segment = self.get_audio_segment(result)
 
-                if req.streaming:  # Used only by the API server
-                    yield InferenceResult(
-                        code="segment",
-                        audio=(sample_rate, segment),
-                        error=None,
-                    )
-                segments.append(segment)
+                    if req.streaming:  # Used only by the API server
+                        yield InferenceResult(
+                            code="segment",
+                            audio=(sample_rate, segment),
+                            error=None,
+                        )
+                    segments.append(segment)
+                except torch.cuda.OutOfMemoryError as e:
+                    logger.warning(f"OOM during decoding, attempting cleanup and retry...")
+                    # Clear and retry
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                        torch.cuda.synchronize()
+                        gc.collect()
+                    try:
+                        segment = self.get_audio_segment(result)
+                        if req.streaming:
+                            yield InferenceResult(
+                                code="segment",
+                                audio=(sample_rate, segment),
+                                error=None,
+                            )
+                        segments.append(segment)
+                    except Exception as retry_error:
+                        logger.error(f"Failed to decode chunk even after cleanup: {retry_error}")
+                        raise
+                finally:
+                    # Aggressively clear memory after each chunk decode
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                        gc.collect()
             else:
                 break
 
