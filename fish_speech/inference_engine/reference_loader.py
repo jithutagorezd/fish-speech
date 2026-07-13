@@ -109,7 +109,7 @@ class ReferenceLoader:
     def load_audio(self, reference_audio: bytes | str, sr: int):
         """
         Load the audio data from a file or bytes.
-        If the audio is longer than 1 minute (60 seconds), it will be trimmed to 1 minute.
+        If the audio is longer than 30 seconds, it will be trimmed to 30 seconds.
         """
         if len(reference_audio) > 255 or not Path(reference_audio).exists():
             audio_data = reference_audio
@@ -126,13 +126,13 @@ class ReferenceLoader:
             )
             waveform = resampler(waveform)
 
-        # Trim audio to 1 minute (60 seconds) if it exceeds that length
-        max_samples = sr * 60  # 60 seconds at the target sample rate
+        # Trim audio to 30 seconds if it exceeds that length
+        max_samples = sr * 30  # 30 seconds at the target sample rate
         if waveform.shape[1] > max_samples:
             original_duration = waveform.shape[1] / sr
             waveform = waveform[:, :max_samples]
             logger.info(
-                f"Reference audio trimmed from {original_duration:.2f}s to 60.00s (1 minute)"
+                f"Reference audio trimmed from {original_duration:.2f}s to 30.00s"
             )
 
         audio = waveform.squeeze().numpy()
@@ -224,19 +224,19 @@ class ReferenceLoader:
             # Determine the target audio filename with original extension
             target_audio_path = ref_dir / f"sample{audio_path.suffix}"
 
-            # Load audio, trim to 1 minute if necessary, and save
+            # Load audio, trim to 30 seconds if necessary, and save
             import shutil
             
             waveform, original_sr = torchaudio.load(str(audio_path), backend=self.backend)
             
-            # Trim to 1 minute (60 seconds) if necessary
-            max_samples = original_sr * 60
+            # Trim to 30 seconds if necessary
+            max_samples = original_sr * 30
             original_duration = waveform.shape[1] / original_sr
             
             if waveform.shape[1] > max_samples:
                 waveform = waveform[:, :max_samples]
                 logger.info(
-                    f"Reference audio trimmed from {original_duration:.2f}s to 60.00s (1 minute) before storing"
+                    f"Reference audio trimmed from {original_duration:.2f}s to 30.00s before storing"
                 )
             
             # Save the (possibly trimmed) audio
