@@ -109,6 +109,7 @@ class ReferenceLoader:
     def load_audio(self, reference_audio: bytes | str, sr: int):
         """
         Load the audio data from a file or bytes.
+        If the audio is longer than 1 minute (60 seconds), it will be trimmed to 1 minute.
         """
         if len(reference_audio) > 255 or not Path(reference_audio).exists():
             audio_data = reference_audio
@@ -124,6 +125,15 @@ class ReferenceLoader:
                 orig_freq=original_sr, new_freq=sr
             )
             waveform = resampler(waveform)
+
+        # Trim audio to 1 minute (60 seconds) if it exceeds that length
+        max_samples = sr * 60  # 60 seconds at the target sample rate
+        if waveform.shape[1] > max_samples:
+            original_duration = waveform.shape[1] / sr
+            waveform = waveform[:, :max_samples]
+            logger.info(
+                f"Reference audio trimmed from {original_duration:.2f}s to 60.00s (1 minute)"
+            )
 
         audio = waveform.squeeze().numpy()
         return audio
@@ -214,10 +224,23 @@ class ReferenceLoader:
             # Determine the target audio filename with original extension
             target_audio_path = ref_dir / f"sample{audio_path.suffix}"
 
-            # Copy audio file
+            # Load audio, trim to 1 minute if necessary, and save
             import shutil
-
-            shutil.copy2(audio_path, target_audio_path)
+            
+            waveform, original_sr = torchaudio.load(str(audio_path), backend=self.backend)
+            
+            # Trim to 1 minute (60 seconds) if necessary
+            max_samples = original_sr * 60
+            original_duration = waveform.shape[1] / original_sr
+            
+            if waveform.shape[1] > max_samples:
+                waveform = waveform[:, :max_samples]
+                logger.info(
+                    f"Reference audio trimmed from {original_duration:.2f}s to 60.00s (1 minute) before storing"
+                )
+            
+            # Save the (possibly trimmed) audio
+            torchaudio.save(str(target_audio_path), waveform, original_sr)
 
             # Create .lab file
             lab_path = ref_dir / "sample.lab"
