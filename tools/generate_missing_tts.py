@@ -71,15 +71,6 @@ TARGET_TEXT = (
 )
 
 
-def get_reference_text(client: Client, reference_audio_path: Path) -> str:
-    """Call the webui's own ASR autofill endpoint to transcribe the reference audio."""
-    result = client.predict(
-        handle_file(str(reference_audio_path)),
-        api_name=ASR_API_NAME,
-    )
-    return str(result) if result else ""
-
-
 def build_kwargs(reference_audio_path: Path, reference_id: str, reference_text: str):
     """
     Keyword args matching the fish-speech webui `/dispatch` endpoint exactly,
@@ -102,7 +93,37 @@ def build_kwargs(reference_audio_path: Path, reference_id: str, reference_text: 
     }
 
 
-def find_original_recording(author_dir: Path) -> Path | None:
+def run_with_progress(client: Client, api_name: str, log_prefix: str, poll_interval: float = 3.0, *args, **kwargs):
+    """
+    Like client.predict(), but non-blocking + prints live progress while the
+    job runs, instead of going silent until it finishes.
+    """
+    job = client.submit(*args, api_name=api_name, **kwargs)
+
+    last_msg = None
+    while not job.done():
+        status = job.status()
+        pct = None
+        desc = None
+        if status.progress_data:
+            for p in status.progress_data:
+                if p.get("length"):
+                    pct = 100 * (p.get("index") or 0) / p["length"]
+                desc = p.get("desc") or desc
+        eta = f", eta {status.eta:.0f}s" if status.eta else ""
+        if pct is not None:
+            msg = f"{log_prefix} progress: {pct:.0f}%{f' - {desc}' if desc else ''}{eta}"
+        elif status.code:
+            msg = f"{log_prefix} status: {status.code.name.lower()}{eta}"
+        else:
+            msg = f"{log_prefix} still running...{eta}"
+
+        if msg != last_msg:
+            log.info(msg)
+            last_msg = msg
+        time.sleep(poll_interval)
+
+    return job.result()
     for f in sorted(author_dir.iterdir()):
         if not f.is_file():
             continue
@@ -168,7 +189,11 @@ def main():
         item_start = time.time()
 
         try:
-            reference_text = get_reference_text(client, original)
+            reference_text = run_with_progress(
+                client, ASR_API_NAME, f"[{i}/{len(missing)}] [asr]",
+                handle_file(str(original)),
+            )
+            reference_text = str(reference_text) if reference_text else ""
             log.info(f"[{i}/{len(missing)}] [asr] transcribed reference_text: {reference_text!r}")
         except Exception as e:
             log.error(f"[{i}/{len(missing)}] [error] {author_dir}: ASR transcribe failed: {e}")
@@ -176,8 +201,8 @@ def main():
             continue
 
         try:
-            result = client.predict(
-                api_name=API_NAME,
+            result = run_with_progress(
+                client, API_NAME, f"[{i}/{len(missing)}] [gen]",
                 **build_kwargs(original, reference_id=author_dir.name, reference_text=reference_text),
             )
         except Exception as e:
