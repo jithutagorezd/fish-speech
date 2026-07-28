@@ -93,7 +93,7 @@ def build_kwargs(reference_audio_path: Path, reference_id: str, reference_text: 
     }
 
 
-def run_with_progress(client: Client, api_name: str, log_prefix: str, poll_interval: float = 3.0, *args, **kwargs):
+def run_with_progress(client: Client, api_name: str, log_prefix: str, *args, poll_interval: float = 3.0, **kwargs):
     """
     Like client.predict(), but non-blocking + prints live progress while the
     job runs, instead of going silent until it finishes.
