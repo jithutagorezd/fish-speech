@@ -74,7 +74,11 @@ filelists/
 # Audio Files
 # -----------
 *.wav
+# ...but keep test audio (reference + ai_generated) tracked
+!test_audio/**
+!test_audio/**/*.wav
 *.mp3
+!test_audio/**/*.mp3
 *.flac
 *.ogg
 *.m4a
