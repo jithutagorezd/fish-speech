@@ -124,6 +124,9 @@ def run_with_progress(client: Client, api_name: str, log_prefix: str, poll_inter
         time.sleep(poll_interval)
 
     return job.result()
+
+
+def find_original_recording(author_dir: Path) -> Path | None:
     for f in sorted(author_dir.iterdir()):
         if not f.is_file():
             continue
