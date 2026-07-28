@@ -54,7 +54,8 @@ log = logging.getLogger("tts")
 # PARAM_ORDER: the positional args in the SAME order view_api() lists them.
 # Use None for any param you want left at the app's default.
 # ---------------------------------------------------------------------------
-API_NAME = "/inference"
+API_NAME = "/dispatch"
+ASR_API_NAME = "/_wrapper"  # auto-transcribes reference_audio -> reference_text
 
 TARGET_TEXT = (
     "[laugh] That's actually pretty funny!\n"
@@ -69,24 +70,35 @@ TARGET_TEXT = (
     "[confident] I know we can do this."
 )
 
-REFERENCE_TEXT = ""  # left blank -> webui's own Whisper ASR fills this in
+
+def get_reference_text(client: Client, reference_audio_path: Path) -> str:
+    """Call the webui's own ASR autofill endpoint to transcribe the reference audio."""
+    result = client.predict(
+        handle_file(str(reference_audio_path)),
+        api_name=ASR_API_NAME,
+    )
+    return str(result) if result else ""
 
 
-def build_kwargs(reference_audio_path: Path):
+def build_kwargs(reference_audio_path: Path, reference_id: str, reference_text: str):
     """
-    Keyword args matching the fish-speech webui `/inference` endpoint.
-    Adjust names to match whatever --inspect prints for your build.
+    Keyword args matching the fish-speech webui `/dispatch` endpoint exactly,
+    in the order shown by --inspect.
     """
     return {
         "text": TARGET_TEXT,
+        "reference_id": reference_id,
         "reference_audio": handle_file(str(reference_audio_path)),
-        "reference_text": REFERENCE_TEXT,
+        "reference_text": reference_text,
         "max_new_tokens": 1024,
         "chunk_length": 200,
-        "top_p": 0.7,
-        "repetition_penalty": 1.5,
-        "temperature": 0.7,
+        "top_p": 0.8,
+        "repetition_penalty": 1.1,
+        "temperature": 0.8,
         "seed": 0,
+        "use_memory_cache": "on",
+        "max_words_per_chunk": 200,
+        "mode_radio": "Long-form (chunked)",
     }
 
 
@@ -156,18 +168,36 @@ def main():
         item_start = time.time()
 
         try:
-            result = client.predict(api_name=API_NAME, **build_kwargs(original))
+            reference_text = get_reference_text(client, original)
+            log.info(f"[{i}/{len(missing)}] [asr] transcribed reference_text: {reference_text!r}")
+        except Exception as e:
+            log.error(f"[{i}/{len(missing)}] [error] {author_dir}: ASR transcribe failed: {e}")
+            failed.append((author_dir, f"ASR failed: {e}"))
+            continue
+
+        try:
+            result = client.predict(
+                api_name=API_NAME,
+                **build_kwargs(original, reference_id=author_dir.name, reference_text=reference_text),
+            )
         except Exception as e:
             log.error(f"[{i}/{len(missing)}] [error] {author_dir}: {e}")
             failed.append((author_dir, str(e)))
             continue
 
+        # /dispatch returns a tuple: (generated_audio, error_message)
+        generated_audio, error_message = result if isinstance(result, (tuple, list)) else (result, "")
+        if error_message:
+            log.error(f"[{i}/{len(missing)}] [error] {author_dir}: webui returned error: {error_message}")
+            failed.append((author_dir, str(error_message)))
+            continue
+
         # result is usually a filepath (str) or dict with 'path' key returned by gradio_client
         result_path: str | None
-        if isinstance(result, dict) and "path" in result:
-            result_path = str(result["path"])
-        elif isinstance(result, (str, Path)):
-            result_path = str(result)
+        if isinstance(generated_audio, dict) and "path" in generated_audio:
+            result_path = str(generated_audio["path"])
+        elif isinstance(generated_audio, (str, Path)):
+            result_path = str(generated_audio)
         else:
             result_path = None
 
