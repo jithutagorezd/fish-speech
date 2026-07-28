@@ -87,7 +87,7 @@ def build_kwargs(reference_audio_path: Path, reference_id: str, reference_text: 
         "repetition_penalty": 1.1,
         "temperature": 0.8,
         "seed": 0,
-        "use_memory_cache": "on",
+        "use_memory_cache": "off",
         "max_words_per_chunk": 200,
         "mode_radio": "Long-form (chunked)",
     }
@@ -107,9 +107,12 @@ def run_with_progress(client: Client, api_name: str, log_prefix: str, *args, pol
         desc = None
         if status.progress_data:
             for p in status.progress_data:
-                if p.get("length"):
-                    pct = 100 * (p.get("index") or 0) / p["length"]
-                desc = p.get("desc") or desc
+                p_index = p.get("index") if isinstance(p, dict) else getattr(p, "index", None)
+                p_length = p.get("length") if isinstance(p, dict) else getattr(p, "length", None)
+                p_desc = p.get("desc") if isinstance(p, dict) else getattr(p, "desc", None)
+                if p_length:
+                    pct = 100 * (p_index or 0) / p_length
+                desc = p_desc or desc
         eta = f", eta {status.eta:.0f}s" if status.eta else ""
         if pct is not None:
             msg = f"{log_prefix} progress: {pct:.0f}%{f' - {desc}' if desc else ''}{eta}"
