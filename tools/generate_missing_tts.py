@@ -209,7 +209,13 @@ def main():
         try:
             result = run_with_progress(
                 client, API_NAME, f"[{i}/{len(missing)}] [gen]",
-                **build_kwargs(original, reference_id=author_dir.name, reference_text=reference_text),
+                **build_kwargs(
+                    original,
+                    reference_id="",  # MUST be empty - any value here makes the engine
+                                       # load from the preset `references/` library by ID
+                                       # instead of using our uploaded reference_audio.
+                    reference_text=reference_text,
+                ),
             )
         except Exception as e:
             log.error(f"[{i}/{len(missing)}] [error] {author_dir}: {e}")
