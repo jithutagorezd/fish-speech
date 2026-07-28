@@ -28,10 +28,25 @@ Step 2 - run for real:
 """
 
 import argparse
+import logging
 import shutil
+import time
 from pathlib import Path
 
 from gradio_client import Client, handle_file
+
+LOG_PATH = Path("generate_missing_tts.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.StreamHandler(),          # prints to terminal, same as before
+        logging.FileHandler(LOG_PATH),    # also saved to disk, survives crashes
+    ],
+)
+log = logging.getLogger("tts")
 
 # ---------------------------------------------------------------------------
 # EDIT THESE two values after running with --inspect once.
@@ -104,6 +119,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="List what would be generated, don't call API.")
     args = parser.parse_args()
 
+    log.info(f"Connecting to {args.url}")
     client = Client(args.url)
 
     if args.inspect:
@@ -115,29 +131,35 @@ def main():
     for author_dir in iter_author_dirs(root):
         out_path = author_dir / "ai_generated.wav"
         if out_path.exists():
-            print(f"[skip] {author_dir} -> ai_generated.wav already exists")
+            log.info(f"[skip] {author_dir} -> ai_generated.wav already exists")
             continue
 
         original = find_original_recording(author_dir)
         if original is None:
-            print(f"[warn] {author_dir} -> no original recording found, skipping")
+            log.warning(f"[warn] {author_dir} -> no original recording found, skipping")
             continue
 
         missing.append((author_dir, original, out_path))
 
-    print(f"\nFound {len(missing)} author folder(s) needing ai_generated.wav\n")
+    log.info(f"Found {len(missing)} author folder(s) needing ai_generated.wav")
 
     if args.dry_run:
         for author_dir, original, out_path in missing:
-            print(f"  {author_dir.name}: reference={original.name} -> {out_path}")
+            log.info(f"  {author_dir.name}: reference={original.name} -> {out_path}")
         return
 
-    for author_dir, original, out_path in missing:
-        print(f"[gen] {author_dir} using reference {original.name}")
+    succeeded, failed = [], []
+    run_start = time.time()
+
+    for i, (author_dir, original, out_path) in enumerate(missing, start=1):
+        log.info(f"[{i}/{len(missing)}] [gen] {author_dir} using reference {original.name}")
+        item_start = time.time()
+
         try:
             result = client.predict(api_name=API_NAME, **build_kwargs(original))
         except Exception as e:
-            print(f"[error] {author_dir}: {e}")
+            log.error(f"[{i}/{len(missing)}] [error] {author_dir}: {e}")
+            failed.append((author_dir, str(e)))
             continue
 
         # result is usually a filepath (str) or dict with 'path' key returned by gradio_client
@@ -150,13 +172,35 @@ def main():
             result_path = None
 
         if not result_path or not Path(result_path).exists():
-            print(f"[error] {author_dir}: no output audio returned ({result})")
+            log.error(f"[{i}/{len(missing)}] [error] {author_dir}: no output audio returned ({result})")
+            failed.append((author_dir, "no output audio returned"))
             continue
 
-        shutil.copy(str(result_path), str(out_path))
-        print(f"[done] {author_dir} -> {out_path}")
+        try:
+            shutil.copy(str(result_path), str(out_path))
+        except Exception as e:
+            log.error(f"[{i}/{len(missing)}] [error] {author_dir}: failed saving file: {e}")
+            failed.append((author_dir, f"save failed: {e}"))
+            continue
 
-    print("\nAll done.")
+        elapsed = time.time() - item_start
+        log.info(f"[{i}/{len(missing)}] [done] {author_dir} -> {out_path} ({elapsed:.1f}s)")
+        succeeded.append(author_dir)
+
+    total_elapsed = time.time() - run_start
+    log.info("")
+    log.info("===== SUMMARY =====")
+    log.info(f"Total attempted : {len(missing)}")
+    log.info(f"Succeeded       : {len(succeeded)}")
+    log.info(f"Failed          : {len(failed)}")
+    log.info(f"Total time      : {total_elapsed:.1f}s")
+    if failed:
+        log.info("Failed items:")
+        for author_dir, reason in failed:
+            log.info(f"  - {author_dir}: {reason}")
+        log.info("Re-run the script again - already-succeeded files are skipped automatically,")
+        log.info("only failed/missing ones will be retried.")
+    log.info(f"Full log saved to: {LOG_PATH.resolve()}")
 
 
 if __name__ == "__main__":
