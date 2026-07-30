@@ -60,31 +60,47 @@ THRESHOLDS = [
 ]
 
 
+CRITICAL_METRICS = {"speaker_similarity", "wer", "cer"}
+
+
 def evaluate_thresholds(row: Dict[str, Any]) -> tuple:
-    """Returns (overall_flag, reasons_str, score_summary_str)."""
+    """Returns (overall_flag, reasons_str)."""
     reasons = []
-    summary_parts = []
+    missing_critical = []
 
     for key, comparator, threshold, description in THRESHOLDS:
         actual_key = "speaking_rate_wpm" if key == "speaking_rate_wpm_max" else key
         value = row.get(actual_key)
         if value is None:
-            continue  # metric failed to compute, skip rather than penalize
+            if actual_key in CRITICAL_METRICS:
+                missing_critical.append(actual_key)
+            continue  # non-critical metric failed to compute, skip rather than penalize
         try:
             value = float(value)
         except (TypeError, ValueError):
+            if actual_key in CRITICAL_METRICS:
+                missing_critical.append(actual_key)
             continue
         if value != value:  # NaN check
+            if actual_key in CRITICAL_METRICS:
+                missing_critical.append(actual_key)
             continue
 
         passed = (value >= threshold) if comparator == "min" else (value <= threshold)
         op_symbol = ">=" if comparator == "min" else "<="
-        summary_parts.append(f"{actual_key}={value:.3f} (need {op_symbol}{threshold})")
         if not passed:
             reasons.append(f"{actual_key}={value:.3f} fails {op_symbol}{threshold}: {description}")
 
-    overall_flag = "FAIL" if reasons else "PASS"
-    reasons_str = "; ".join(reasons) if reasons else "all thresholds met"
+    if missing_critical:
+        overall_flag = "ERROR"
+        reasons_str = f"could not compute critical metric(s): {', '.join(sorted(set(missing_critical)))} - rerun this author"
+    elif reasons:
+        overall_flag = "FAIL"
+        reasons_str = "; ".join(reasons)
+    else:
+        overall_flag = "PASS"
+        reasons_str = "all thresholds met"
+
     return overall_flag, reasons_str
 
 TARGET_TEXT = (
@@ -252,8 +268,8 @@ def main():
     import whisper
     from resemblyzer import VoiceEncoder
 
-    whisper_model = whisper.load_model(args.whisper_model)
-    encoder = VoiceEncoder()
+    whisper_model = whisper.load_model(args.whisper_model, device="cpu")
+    encoder = VoiceEncoder(device="cpu")
 
     fieldnames = [
         "gender", "author", "reference_file", "generated_file",
