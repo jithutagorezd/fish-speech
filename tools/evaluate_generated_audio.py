@@ -174,9 +174,9 @@ def metric_wer_cer(gen_path: Path, whisper_model) -> tuple:
 
 def metric_utmos(gen_path: Path) -> float:
     try:
-        import speechmos
+        from speechmos import dnsmos
         y, sr = load_audio(gen_path, sr=16000)
-        score = speechmos.dnsmos.run(y, sr=sr)
+        score = dnsmos.run(y, sr=sr)
         return float(score.get("ovrl_mos", score.get("mos", np.nan)))
     except Exception:
         return float("nan")
