@@ -81,7 +81,7 @@ def build_kwargs(reference_audio_path: Path, reference_id: str, reference_text: 
         "reference_id": reference_id,
         "reference_audio": handle_file(str(reference_audio_path)),
         "reference_text": reference_text,
-        "max_new_tokens": 700,
+        "max_new_tokens": 550,
         "chunk_length": 200,
         "top_p": 0.8,
         "repetition_penalty": 1.1,
@@ -89,7 +89,7 @@ def build_kwargs(reference_audio_path: Path, reference_id: str, reference_text: 
         "seed": 0,
         "use_memory_cache": "off",
         "max_words_per_chunk": 200,
-        "mode_radio": "Long-form (chunked)",
+        "mode_radio": "Single shot",
     }
 
 
