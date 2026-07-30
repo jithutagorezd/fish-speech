@@ -176,6 +176,7 @@ def metric_utmos(gen_path: Path) -> float:
     try:
         from speechmos import dnsmos
         y, sr = load_audio(gen_path, sr=16000)
+        y = np.clip(y, -1.0, 1.0)  # dnsmos requires strictly [-1, 1]; some generations slightly overshoot
         score = dnsmos.run(y, sr=sr)
         return float(score.get("ovrl_mos", score.get("mos", np.nan)))
     except Exception:
