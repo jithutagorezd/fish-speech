@@ -54,7 +54,7 @@ DISPATCH_API_NAME = "/dispatch"
 SR = 24000  # common working rate for blending; server resamples internally anyway
 
 
-def blend_audios(path1: Path, path2: Path, ratio: float, out_path: Path) -> Path:
+def blend_audios(path1: Path, path2: Path, ratio: float, out_dir: Path) -> Path:
     import librosa
     import soundfile as sf
 
@@ -71,18 +71,22 @@ def blend_audios(path1: Path, path2: Path, ratio: float, out_path: Path) -> Path
     y1 = y1 / (np.max(np.abs(y1)) + 1e-9)
     y2 = y2 / (np.max(np.abs(y2)) + 1e-9)
 
+    out_dir.mkdir(parents=True, exist_ok=True)
+    sf.write(str(out_dir / "audio_1.wav"), y1, SR)
+    sf.write(str(out_dir / "audio_2.wav"), y2, SR)
+
     mixed = ratio * y1 + (1 - ratio) * y2
     peak = np.max(np.abs(mixed)) + 1e-9
     if peak > 1.0:
         mixed = mixed / peak * 0.98  # leave a little headroom, avoid clipping
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "combined_reference.wav"
     sf.write(str(out_path), mixed, SR)
     log.info(f"Blended (overlapped) audio saved to {out_path} (ratio={ratio:.2f}, duration={n / SR:.1f}s)")
     return out_path
 
 
-def concat_audios(path1: Path, path2: Path, out_path: Path, seconds_each: float = 15.0) -> Path:
+def concat_audios(path1: Path, path2: Path, out_dir: Path, seconds_each: float = 15.0) -> Path:
     """
     Sequential concatenation: first `seconds_each` of audio1, followed by
     first `seconds_each` of audio2 - one voice, then the other, back to back.
@@ -95,12 +99,16 @@ def concat_audios(path1: Path, path2: Path, out_path: Path, seconds_each: float 
     y1, _ = librosa.load(str(path1), sr=SR, mono=True, duration=seconds_each)
     y2, _ = librosa.load(str(path2), sr=SR, mono=True, duration=seconds_each)
 
+    out_dir.mkdir(parents=True, exist_ok=True)
+    sf.write(str(out_dir / "audio_1.wav"), y1, SR)
+    sf.write(str(out_dir / "audio_2.wav"), y2, SR)
+
     concatenated = np.concatenate([y1, y2])
     peak = np.max(np.abs(concatenated)) + 1e-9
     if peak > 1.0:
         concatenated = concatenated / peak * 0.98
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "combined_reference.wav"
     sf.write(str(out_path), concatenated, SR)
     total_dur = len(concatenated) / SR
     log.info(f"Concatenated audio saved to {out_path} (audio1: {len(y1)/SR:.1f}s + audio2: {len(y2)/SR:.1f}s = {total_dur:.1f}s)")
