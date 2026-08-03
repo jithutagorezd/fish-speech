@@ -78,7 +78,32 @@ def blend_audios(path1: Path, path2: Path, ratio: float, out_path: Path) -> Path
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(str(out_path), mixed, SR)
-    log.info(f"Blended audio saved to {out_path} (ratio={ratio:.2f}, duration={n / SR:.1f}s)")
+    log.info(f"Blended (overlapped) audio saved to {out_path} (ratio={ratio:.2f}, duration={n / SR:.1f}s)")
+    return out_path
+
+
+def concat_audios(path1: Path, path2: Path, out_path: Path, seconds_each: float = 15.0) -> Path:
+    """
+    Sequential concatenation: first `seconds_each` of audio1, followed by
+    first `seconds_each` of audio2 - one voice, then the other, back to back.
+    This is what "first half is author A, second half is author B" means.
+    """
+    import librosa
+    import soundfile as sf
+
+    log.info(f"Loading {path1.name} and {path2.name} at {SR} Hz for concatenation")
+    y1, _ = librosa.load(str(path1), sr=SR, mono=True, duration=seconds_each)
+    y2, _ = librosa.load(str(path2), sr=SR, mono=True, duration=seconds_each)
+
+    concatenated = np.concatenate([y1, y2])
+    peak = np.max(np.abs(concatenated)) + 1e-9
+    if peak > 1.0:
+        concatenated = concatenated / peak * 0.98
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(out_path), concatenated, SR)
+    total_dur = len(concatenated) / SR
+    log.info(f"Concatenated audio saved to {out_path} (audio1: {len(y1)/SR:.1f}s + audio2: {len(y2)/SR:.1f}s = {total_dur:.1f}s)")
     return out_path
 
 
@@ -113,7 +138,7 @@ def clone_voice(url: str, reference_audio: Path, target_text: str, out_path: Pat
         "reference_id": "",  # must stay empty - non-empty loads from preset library instead of our audio
         "reference_audio": handle_file(str(reference_audio)),
         "reference_text": reference_text,
-        "max_new_tokens": 550,
+        "max_new_tokens": 400,
         "chunk_length": 200,
         "top_p": 0.8,
         "repetition_penalty": 1.1,
@@ -153,7 +178,12 @@ def main():
     parser.add_argument("--url", required=True, help="Gradio share link")
     parser.add_argument("--audio1", required=True, type=Path)
     parser.add_argument("--audio2", required=True, type=Path)
-    parser.add_argument("--ratio", type=float, default=0.5, help="Weight of audio1 in the blend (0-1). 0.5 = equal mix.")
+    parser.add_argument("--mode", choices=["blend", "concat"], default="concat",
+                         help="'concat' = first half author A, second half author B (sequential). "
+                              "'blend' = both voices overlapped/averaged simultaneously.")
+    parser.add_argument("--seconds-each", type=float, default=15.0,
+                         help="For --mode concat: how many seconds to take from each audio.")
+    parser.add_argument("--ratio", type=float, default=0.5, help="For --mode blend: weight of audio1 in the mix (0-1).")
     parser.add_argument("--target-text", type=str, default=TARGET_TEXT)
     parser.add_argument("--out-dir", type=Path, default=Path("mixed_voice_test"))
     args = parser.parse_args()
@@ -162,13 +192,16 @@ def main():
         sys.exit(f"audio1 not found: {args.audio1}")
     if not args.audio2.exists():
         sys.exit(f"audio2 not found: {args.audio2}")
-    if not (0.0 <= args.ratio <= 1.0):
-        sys.exit("--ratio must be between 0 and 1")
 
-    blended_path = args.out_dir / "blended_reference.wav"
+    blended_path = args.out_dir / "combined_reference.wav"
     cloned_path = args.out_dir / "hybrid_generated.wav"
 
-    blend_audios(args.audio1, args.audio2, args.ratio, blended_path)
+    if args.mode == "concat":
+        concat_audios(args.audio1, args.audio2, blended_path, seconds_each=args.seconds_each)
+    else:
+        if not (0.0 <= args.ratio <= 1.0):
+            sys.exit("--ratio must be between 0 and 1")
+        blend_audios(args.audio1, args.audio2, args.ratio, blended_path)
     clone_voice(args.url, blended_path, args.target_text, cloned_path)
 
     log.info("Loading speaker encoder (CPU) for similarity scoring...")
@@ -182,9 +215,13 @@ def main():
     blend_sim_to_2 = speaker_similarity(blended_path, args.audio2, encoder)
 
     print("\n===== RESULTS =====")
-    print(f"Blend ratio        : {args.ratio:.2f} (audio1) / {1 - args.ratio:.2f} (audio2)")
-    print(f"Blended ref vs audio1 similarity : {blend_sim_to_1:.4f}")
-    print(f"Blended ref vs audio2 similarity : {blend_sim_to_2:.4f}")
+    print(f"Mode                : {args.mode}")
+    if args.mode == "concat":
+        print(f"Seconds each        : {args.seconds_each}s from audio1, {args.seconds_each}s from audio2")
+    else:
+        print(f"Blend ratio         : {args.ratio:.2f} (audio1) / {1 - args.ratio:.2f} (audio2)")
+    print(f"Combined ref vs audio1 similarity : {blend_sim_to_1:.4f}")
+    print(f"Combined ref vs audio2 similarity : {blend_sim_to_2:.4f}")
     print(f"Cloned hybrid vs audio1 similarity : {sim_to_1:.4f}")
     print(f"Cloned hybrid vs audio2 similarity : {sim_to_2:.4f}")
     if sim_to_1 > sim_to_2:
