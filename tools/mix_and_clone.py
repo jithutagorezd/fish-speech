@@ -201,11 +201,13 @@ def main():
     if not args.audio2.exists():
         sys.exit(f"audio2 not found: {args.audio2}")
 
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+
     blended_path = args.out_dir / "combined_reference.wav"
     cloned_path = args.out_dir / "hybrid_generated.wav"
 
     if args.mode == "concat":
-        concat_audios(args.audio1, args.audio2, blended_path, seconds_each=args.seconds_each)
+        concat_audios(args.audio1, args.audio2, args.out_dir, seconds_each=args.seconds_each)
     else:
         if not (0.0 <= args.ratio <= 1.0):
             sys.exit("--ratio must be between 0 and 1")
