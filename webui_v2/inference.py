@@ -16,11 +16,11 @@ from tools.webui.whisper_utils import transcribe_reference_audio
 from webui_v2.utils import count_words, split_text_into_chunks
 
 
-def get_reference_audio(reference_audio: str, reference_text: str) -> list:
+def get_reference_audio(reference_audio: str, reference_text: Optional[str]) -> list:
     """Build list of ServeReferenceAudio from uploaded file and transcript."""
     with open(reference_audio, "rb") as f:
         audio_bytes = f.read()
-    return [ServeReferenceAudio(audio=audio_bytes, text=reference_text)]
+    return [ServeReferenceAudio(audio=audio_bytes, text=reference_text or "")]
 
 
 def build_html_error_message(error: Any) -> str:
@@ -53,9 +53,13 @@ def inference_single(
     engine,
 ) -> Tuple[Optional[Tuple[int, np.ndarray]], Optional[str]]:
     """Single-shot TTS (one request). Returns (sample_rate, audio) or (None, error_html)."""
+    text = (text or "").strip()
+    if not text:
+        return None, build_html_error_message(ValueError("Please enter text to synthesize."))
+
     references = get_reference_audio(reference_audio, reference_text) if reference_audio else []
     req = ServeTTSRequest(
-        text=text.strip(),
+        text=text,
         reference_id=reference_id or None,
         references=references,
         max_new_tokens=max_new_tokens,
@@ -89,7 +93,7 @@ def inference_long_form(
     Long-form TTS: split text into chunks, synthesize each, concatenate audio.
     progress(frac, message) is called for UI updates.
     """
-    text = text.strip()
+    text = (text or "").strip()
     if not text:
         return None, build_html_error_message(ValueError("Please enter text to synthesize."))
 

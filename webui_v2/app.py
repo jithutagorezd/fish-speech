@@ -449,6 +449,7 @@ def build_app(
                     reference_id = gr.Textbox(
                         label=i18n("Reference ID"),
                         placeholder="Leave empty to use the reference audio above",
+                        value="",
                     )
                     transcribe_btn = gr.Button(
                         "🎤 " + i18n("Auto-transcribe reference audio with Whisper"),
@@ -459,6 +460,7 @@ def build_app(
                         label=i18n("Reference Text"),
                         placeholder="Transcription of the reference audio, or use Auto-transcribe. Improves voice-clone accuracy but isn't required.",
                         lines=2,
+                        value="",
                     )
                     use_memory_cache = gr.Radio(
                         label=i18n("Use Memory Cache"),
