@@ -107,7 +107,7 @@
       "advanced-toggle", "advanced-chevron", "advanced-body",
       "output-estimate", "output-empty", "output-loading", "output-ready",
       "flat-waveform", "pulse-waveform", "out-waveform", "out-audio",
-      "out-play-toggle", "out-time-label", "out-speed-toggle", "out-download",
+      "out-play-toggle", "out-time-label", "out-speed-toggle", "out-download", "out-share",
       "generate-btn", "generate-btn-loading", "generate-btn-label"
     ].forEach(function (id) { els[id] = $(id); });
   }
@@ -797,6 +797,31 @@
     document.body.removeChild(a);
   }
 
+  function onShareOut() {
+    if (!state.outObjectUrl) return;
+
+    var canFileShare = !!(navigator.share && navigator.canShare);
+    if (!canFileShare) {
+      onDownloadOut();
+      return;
+    }
+
+    fetch(state.outObjectUrl)
+      .then(function (res) { return res.blob(); })
+      .then(function (blob) {
+        var file = new File([blob], "speech-" + Date.now() + ".wav", { type: "audio/wav" });
+        if (!navigator.canShare({ files: [file] })) {
+          onDownloadOut();
+          return;
+        }
+        return navigator.share({ files: [file], title: "Generated speech" });
+      })
+      .catch(function (err) {
+        if (err && err.name === "AbortError") return; // user cancelled the share sheet
+        onDownloadOut();
+      });
+  }
+
   /* ---------- wiring ---------- */
 
   function buildEmotionTags() {
@@ -891,6 +916,7 @@
     els["out-waveform"].addEventListener("click", onSeekOut);
     els["out-speed-toggle"].addEventListener("click", onCycleSpeed);
     els["out-download"].addEventListener("click", onDownloadOut);
+    els["out-share"].addEventListener("click", onShareOut);
     wireOutAudioElement();
 
     els["generate-btn"].addEventListener("click", onGenerate);
