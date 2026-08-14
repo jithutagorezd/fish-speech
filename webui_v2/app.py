@@ -103,9 +103,9 @@ FOOTER_HTML = """
 
 CUSTOM_CSS = """
 :root {
-    --fish-cyan: #06b6d4;
-    --fish-blue: #3b82f6;
-    --fish-coral: #fb7185;
+    --fish-rose: #fb7185;
+    --fish-orange: #fb923c;
+    --fish-amber: #fbbf24;
 }
 
 .gradio-container {
@@ -115,12 +115,12 @@ CUSTOM_CSS = """
 
 /* ---- Header banner ---- */
 .fish-header {
-    background: linear-gradient(135deg, #0f172a 0%, #0e7490 55%, #0891b2 100%);
-    border-radius: 12px;
-    padding: 12px 20px;
-    margin-bottom: 10px;
-    color: #f8fafc;
-    box-shadow: 0 6px 16px rgba(8, 145, 178, 0.2);
+    background: linear-gradient(135deg, #1e1145 0%, #be123c 55%, #fb923c 100%);
+    border-radius: 14px;
+    padding: 14px 22px;
+    margin-bottom: 12px;
+    color: #fff7ed;
+    box-shadow: 0 8px 20px rgba(190, 18, 60, 0.25);
 }
 .fish-header-row {
     display: flex;
@@ -128,25 +128,25 @@ CUSTOM_CSS = """
     gap: 12px;
 }
 .fish-logo {
-    font-size: 1.6rem;
+    font-size: 1.7rem;
     line-height: 1;
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
 }
 .fish-title {
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 800;
     letter-spacing: -0.02em;
-    color: #f8fafc !important;
+    color: #fff7ed !important;
 }
 .fish-title-accent {
-    background: linear-gradient(90deg, #67e8f9, #93c5fd);
+    background: linear-gradient(90deg, #fde68a, #fb923c);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent !important;
 }
 .fish-subtitle {
-    font-size: 0.78rem;
-    color: #cbd5e1 !important;
+    font-size: 0.8rem;
+    color: #fed7aa !important;
 }
 
 /* ---- Section headings ---- */
@@ -158,12 +158,39 @@ CUSTOM_CSS = """
 
 /* ---- Cards ---- */
 .fish-card {
-    border-radius: 16px !important;
-    box-shadow: 0 2px 14px rgba(15, 23, 42, 0.06);
+    border-radius: 18px !important;
+    box-shadow: 0 2px 14px rgba(190, 18, 60, 0.05);
     transition: box-shadow .2s ease;
 }
 .fish-card:hover {
-    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.1);
+    box-shadow: 0 8px 28px rgba(190, 18, 60, 0.1);
+}
+
+/* ---- Buttons: bigger and more tactile everywhere ---- */
+.gradio-container button {
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.gradio-container button:active {
+    transform: scale(0.97);
+}
+.gradio-container .lg.secondary,
+.gradio-container button[class*="secondary"] {
+    min-height: 44px !important;
+    padding: 10px 20px !important;
+    font-size: 0.95rem !important;
+}
+/* Icon-only buttons (record / upload / play toggles inside the audio
+   widget) are tiny by default — give them real tap targets. */
+.gradio-container .icon-button-wrapper button,
+.gradio-container button.icon {
+    min-width: 42px !important;
+    min-height: 42px !important;
+}
+.gradio-container button svg {
+    width: 18px;
+    height: 18px;
 }
 
 /* ---- Emotion tags ---- */
@@ -176,21 +203,21 @@ CUSTOM_CSS = """
 .emotion-tag {
     font: inherit;
     font-size: 0.78rem;
-    padding: 3px 9px;
+    padding: 5px 11px;
     border-radius: 999px;
-    background: rgba(6, 182, 212, 0.15);
-    border: 1px solid rgba(6, 182, 212, 0.35);
+    background: rgba(251, 113, 133, 0.14);
+    border: 1px solid rgba(251, 113, 133, 0.35);
     color: var(--body-text-color);
     cursor: pointer;
 }
 .emotion-tag:hover {
-    background: rgba(6, 182, 212, 0.28);
+    background: rgba(251, 113, 133, 0.26);
 }
 
 .emotion-tag-details { margin-top: 8px; }
 .emotion-tag-details summary {
     display: inline-block;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--body-text-color-subdued);
     cursor: pointer;
@@ -224,17 +251,21 @@ CUSTOM_CSS = """
 
 /* ---- Generate button ---- */
 #generate-btn {
-    font-size: 1rem !important;
+    font-size: 1.1rem !important;
     font-weight: 700 !important;
-    height: 44px !important;
-    border-radius: 12px !important;
+    height: 56px !important;
+    border-radius: 14px !important;
     letter-spacing: .2px;
-    margin-top: 6px;
-    transition: transform .15s ease, box-shadow .15s ease;
+    margin-top: 8px;
+    background: linear-gradient(90deg, #fb7185 0%, #fb923c 100%) !important;
+    border: none !important;
+    color: #fff7ed !important;
+    box-shadow: 0 8px 20px rgba(251, 113, 133, .35);
 }
 #generate-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(8, 145, 178, .35);
+    filter: brightness(1.06);
+    box-shadow: 0 12px 28px rgba(251, 113, 133, .45);
 }
 
 /* ---- Output panel ---- */
@@ -255,17 +286,19 @@ CUSTOM_CSS = """
 """
 
 FISH_THEME = gr.themes.Soft(
-    primary_hue="cyan",
-    secondary_hue="blue",
-    neutral_hue="slate",
+    primary_hue="rose",
+    secondary_hue="orange",
+    neutral_hue="stone",
     font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
 ).set(
     block_radius="16px",
-    block_shadow="0 2px 14px rgba(15, 23, 42, 0.06)",
-    button_primary_background_fill="linear-gradient(90deg, #06b6d4 0%, #3b82f6 100%)",
-    button_primary_background_fill_hover="linear-gradient(90deg, #0891b2 0%, #2563eb 100%)",
+    block_shadow="0 2px 14px rgba(190, 18, 60, 0.05)",
+    button_primary_background_fill="linear-gradient(90deg, #fb7185 0%, #fb923c 100%)",
+    button_primary_background_fill_hover="linear-gradient(90deg, #f43f5e 0%, #f97316 100%)",
     button_primary_text_color="white",
     button_large_radius="14px",
+    button_large_padding="14px 24px",
+    button_small_padding="8px 16px",
 )
 
 
