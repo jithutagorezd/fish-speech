@@ -1,0 +1,10 @@
+# Web layer for the Cadence TTS Control Panel.
+# The Fish Speech S2 backend itself (torch, descript-audio-codec, etc.) is
+# installed separately from ../fish-speech — see README.md "Setup".
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+soundfile
+numpy
+loguru

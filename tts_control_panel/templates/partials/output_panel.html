@@ -1,0 +1,32 @@
+<section class="panel output-panel">
+  <div class="panel-row-header">
+    <span class="panel-title">Output</span>
+    <span id="output-estimate" class="output-estimate mono">~0:02 est.</span>
+  </div>
+
+  <div id="output-empty" class="output-state output-empty">
+    <div id="flat-waveform" class="waveform waveform-flat"></div>
+    <div class="output-empty-text">Generated audio will appear here</div>
+  </div>
+
+  <div id="output-loading" class="output-state output-loading is-hidden">
+    <div id="pulse-waveform" class="waveform waveform-pulse"></div>
+    <div class="output-loading-row">
+      <div class="spinner"></div>
+      <span class="output-loading-text">Synthesizing speech…</span>
+    </div>
+  </div>
+
+  <div id="output-ready" class="output-state output-ready is-hidden">
+    <audio id="out-audio" preload="metadata" class="visually-hidden"></audio>
+    <div id="out-waveform" class="waveform waveform-out"></div>
+    <div class="audio-controls-row output-controls-row">
+      <button type="button" id="out-play-toggle" aria-label="Play generated audio" class="play-btn play-btn-lg">▶</button>
+      <span id="out-time-label" class="time-label mono">0:00 / 1:18</span>
+      <button type="button" id="out-speed-toggle" class="speed-btn mono">1×</button>
+      <div class="flex-spacer"></div>
+      <button type="button" class="pill-btn">Download</button>
+      <button type="button" class="pill-btn pill-btn-ghost">Share</button>
+    </div>
+  </div>
+</section>

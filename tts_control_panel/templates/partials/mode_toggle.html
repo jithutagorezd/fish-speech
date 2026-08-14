@@ -1,0 +1,14 @@
+<section class="panel">
+  <div class="panel-title">Generation mode</div>
+  <div class="mode-buttons">
+    <button type="button" id="mode-single" class="mode-btn is-active" data-mode="single">Single shot</button>
+    <button type="button" id="mode-long" class="mode-btn" data-mode="long">Long-form (chunked)</button>
+  </div>
+  <div id="chunk-slider-row" class="chunk-slider-row is-hidden">
+    <div class="chunk-slider-header">
+      <label for="chunk-slider" class="chunk-slider-label">Max words per chunk</label>
+      <span id="chunk-slider-value" class="chunk-slider-value mono">{{ default_chunk_words }} · ≈1 chunks</span>
+    </div>
+    <input id="chunk-slider" type="range" min="100" max="500" step="10" value="{{ default_chunk_words }}" class="range-input">
+  </div>
+</section>

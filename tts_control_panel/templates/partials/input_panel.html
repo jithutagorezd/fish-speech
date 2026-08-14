@@ -1,0 +1,20 @@
+<section class="panel">
+  <div class="panel-row-header">
+    <label for="script-input" class="panel-label">Script</label>
+    <span id="word-count" class="word-count mono">0 words</span>
+  </div>
+
+  <div class="editor-shell">
+    <div id="editor-mirror" class="editor-mirror mono"></div>
+    <textarea id="script-input" class="editor-textarea mono" spellcheck="false">{{ initial_text }}</textarea>
+  </div>
+
+  <div class="emotion-tags-block">
+    <div class="emotion-tags-label">Emotion tags — click to insert</div>
+    <div id="emotion-tags" class="emotion-tags">
+      {% for tag in emotion_tags %}
+      <button type="button" class="emotion-tag mono" data-tag="{{ tag }}">[{{ tag }}]</button>
+      {% endfor %}
+    </div>
+  </div>
+</section>

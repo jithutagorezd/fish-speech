@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="app-shell">
+
+  {% include "partials/header.html" %}
+  {% include "partials/error_banner.html" %}
+
+  <main class="app-main">
+    <div class="columns">
+
+      <div class="column column-left">
+        {% include "partials/input_panel.html" %}
+        {% include "partials/mode_toggle.html" %}
+        {% include "partials/reference_panel.html" %}
+        {% include "partials/advanced_panel.html" %}
+      </div>
+
+      <div class="column column-right">
+        {% include "partials/output_panel.html" %}
+      </div>
+
+    </div>
+
+    {% include "partials/generate_button.html" %}
+  </main>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  window.APP_CONFIG = {
+    emotionTags: {{ emotion_tags | tojson }},
+    defaultChunkWords: {{ default_chunk_words }},
+    initialText: {{ initial_text | tojson }}
+  };
+</script>
+<script src="{{ url_for('static', path='js/app.js') }}"></script>
+{% endblock %}

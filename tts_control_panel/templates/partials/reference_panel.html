@@ -1,0 +1,66 @@
+<section class="panel panel-collapsible">
+  <button type="button" id="reference-toggle" class="collapsible-trigger">
+    <span class="panel-title">Reference voice</span>
+    <span id="reference-chevron" class="chevron is-open">▸</span>
+  </button>
+
+  <div id="reference-body" class="collapsible-body">
+
+    <div class="reference-row">
+      <div class="field-group">
+        <label for="ref-id" class="field-label">Reference ID <span class="field-optional">(optional)</span></label>
+        <input id="ref-id" type="text" placeholder="voice_7f3a…" class="text-input mono">
+      </div>
+      <div class="switch-col">
+        <button type="button" id="memory-cache-toggle" role="switch" aria-checked="true" class="switch">
+          <span class="switch-track is-on">
+            <span class="switch-knob"></span>
+          </span>
+          <span class="switch-label">Memory cache</span>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="field-label">Reference audio</div>
+
+      <div id="audio-uploaded-block" class="audio-uploaded-block is-hidden">
+        <audio id="ref-audio" preload="metadata" class="visually-hidden"></audio>
+        <div id="ref-waveform" class="waveform waveform-ref"></div>
+        <div class="audio-controls-row">
+          <button type="button" id="ref-play-toggle" aria-label="Play reference audio" class="play-btn">▶</button>
+          <span id="ref-time-label" class="time-label mono">0:00 / 0:06</span>
+          <div class="flex-spacer"></div>
+          <button type="button" id="ref-replace" class="link-btn">replace</button>
+        </div>
+        <div class="trim-block">
+          <div id="trim-label" class="trim-label">Trim — 0.0s – 6.0s</div>
+          <div class="trim-sliders">
+            <input id="trim-start" type="range" min="0" max="95" value="0" class="range-input trim-range trim-range-start">
+            <input id="trim-end" type="range" min="5" max="100" value="100" class="range-input trim-range trim-range-end">
+          </div>
+        </div>
+      </div>
+
+      <div id="audio-empty-block" class="audio-empty-block">
+        <button type="button" id="upload-trigger" class="upload-dropzone">
+          Drop audio file, or click to upload
+        </button>
+        <input id="upload-input" type="file" accept="audio/*" class="visually-hidden">
+        <button type="button" id="record-toggle" class="record-btn">
+          <span id="record-dot" class="record-dot is-hidden"></span>
+          <span id="record-label">● Record reference</span>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-row-header">
+        <label for="ref-text" class="field-label">Reference text</label>
+        <button type="button" id="transcribe-btn" disabled class="transcribe-btn mono">Auto-transcribe</button>
+      </div>
+      <textarea id="ref-text" placeholder="What the reference speaker is saying, for alignment…" rows="2" class="text-input mono textarea-resize"></textarea>
+    </div>
+
+  </div>
+</section>
