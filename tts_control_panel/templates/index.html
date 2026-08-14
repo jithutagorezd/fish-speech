@@ -31,9 +31,9 @@
 {% block extra_scripts %}
 <script>
   window.APP_CONFIG = {
-    emotionTags: {{ emotion_tags | tojson }},
     defaultChunkWords: {{ default_chunk_words }},
-    initialText: {{ initial_text | tojson }}
+    initialText: {{ initial_text | tojson }},
+    maxWords: {{ max_script_words }}
   };
 </script>
 <script src="{{ url_for('static', path='js/app.js') }}"></script>

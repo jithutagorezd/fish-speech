@@ -67,6 +67,8 @@ def parse_args():
 def main():
     args = parse_args()
 
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
     os.environ["TCP_FISH_SPEECH_DIR"] = str(args.fish_speech_dir)
     if args.llama_checkpoint_path:
         os.environ["TCP_LLAMA_CHECKPOINT_PATH"] = str(args.llama_checkpoint_path)

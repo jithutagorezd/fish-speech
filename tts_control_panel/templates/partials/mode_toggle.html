@@ -10,5 +10,8 @@
       <span id="chunk-slider-value" class="chunk-slider-value mono">{{ default_chunk_words }} · ≈1 chunks</span>
     </div>
     <input id="chunk-slider" type="range" min="100" max="500" step="10" value="{{ default_chunk_words }}" class="range-input">
+    <div class="chunk-ticks">
+      {% for _ in range(9) %}<span class="chunk-tick"></span>{% endfor %}
+    </div>
   </div>
 </section>

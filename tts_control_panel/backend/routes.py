@@ -99,11 +99,12 @@ def generate(
             engine=model_state.engine,
         )
 
-    if reference_audio is not None and reference_audio.filename:
-        with save_upload_to_tempfile(reference_audio) as ref_path:
-            audio, err = run(ref_path)
-    else:
-        audio, err = run(None)
+    with model_state.generate_lock:
+        if reference_audio is not None and reference_audio.filename:
+            with save_upload_to_tempfile(reference_audio) as ref_path:
+                audio, err = run(ref_path)
+        else:
+            audio, err = run(None)
 
     if err is not None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, _plain_error(err))

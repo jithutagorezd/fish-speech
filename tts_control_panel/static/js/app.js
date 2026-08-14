@@ -2,9 +2,9 @@
   "use strict";
 
   var config = window.APP_CONFIG || {};
-  var EMOTION_TAGS = config.emotionTags || [];
   var DEFAULT_CHUNK_WORDS = config.defaultChunkWords || 250;
   var INITIAL_TEXT = config.initialText || "";
+  var MAX_WORDS = config.maxWords || 5000;
 
   var SPEEDS = [1, 1.25, 1.5, 2];
   var REF_BUCKETS = 36;
@@ -95,7 +95,7 @@
       "model-status-dot", "model-status-label",
       "error-banner", "error-title", "error-message", "error-dismiss",
       "word-count", "editor-mirror", "script-input",
-      "emotion-tags",
+      "emotion-tags-common", "emotion-tags-grouped", "emotion-tags-expand", "emotion-tags-collapse",
       "mode-single", "mode-long", "chunk-slider-row", "chunk-slider", "chunk-slider-value",
       "reference-toggle", "reference-chevron", "reference-body",
       "ref-id", "memory-cache-toggle",
@@ -107,7 +107,7 @@
       "advanced-toggle", "advanced-chevron", "advanced-body",
       "output-estimate", "output-empty", "output-loading", "output-ready",
       "flat-waveform", "pulse-waveform", "out-waveform", "out-audio",
-      "out-play-toggle", "out-time-label", "out-speed-toggle",
+      "out-play-toggle", "out-time-label", "out-speed-toggle", "out-download",
       "generate-btn", "generate-btn-loading", "generate-btn-label"
     ].forEach(function (id) { els[id] = $(id); });
   }
@@ -289,20 +289,20 @@
     els["script-input"].value = text;
 
     var wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
-    els["word-count"].textContent = wordCount.toLocaleString() + " words";
+    els["word-count"].textContent = wordCount.toLocaleString() + " / " + MAX_WORDS.toLocaleString() + " words";
 
     var mirror = els["editor-mirror"];
     mirror.innerHTML = "";
     if (text.length === 0) {
       var placeholder = document.createElement("span");
       placeholder.className = "placeholder";
-      placeholder.textContent = "Type your script here. Use tags like [laugh] or [whisper] inline to shape delivery.";
+      placeholder.textContent = "Type your script here. Insert tags like [whisper] or [pause] from the patch bay below.";
       mirror.appendChild(placeholder);
     } else {
-      var segments = text.split(/(\[[a-zA-Z]+\])/g).filter(function (t) { return t.length > 0; });
+      var segments = text.split(/(\[[a-zA-Z ]+\])/g).filter(function (t) { return t.length > 0; });
       var frag = document.createDocumentFragment();
       segments.forEach(function (t) {
-        var isTag = /^\[[a-zA-Z]+\]$/.test(t);
+        var isTag = /^\[[a-zA-Z ]+\]$/.test(t);
         var span = document.createElement("span");
         if (isTag) span.className = "tag";
         span.textContent = t;
@@ -685,6 +685,17 @@
       return;
     }
 
+    var wordCount = state.text.trim().split(/\s+/).length;
+    if (wordCount > MAX_WORDS) {
+      state.outputState = "error";
+      showError(
+        "Generation failed",
+        "Script exceeds " + MAX_WORDS.toLocaleString() + " words. Switch to long-form mode or trim the script."
+      );
+      renderOutputState();
+      return;
+    }
+
     if (!state.modelReady) {
       state.outputState = "error";
       showError(
@@ -776,12 +787,35 @@
     els["out-speed-toggle"].textContent = state.outSpeed + "×";
   }
 
+  function onDownloadOut() {
+    if (!state.outObjectUrl) return;
+    var a = document.createElement("a");
+    a.href = state.outObjectUrl;
+    a.download = "speech-" + Date.now() + ".wav";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   /* ---------- wiring ---------- */
 
   function buildEmotionTags() {
-    var wrap = els["emotion-tags"];
-    Array.prototype.forEach.call(wrap.querySelectorAll(".emotion-tag"), function (btn) {
-      btn.addEventListener("click", function () { insertTag(btn.dataset.tag); });
+    var common = els["emotion-tags-common"];
+    var grouped = els["emotion-tags-grouped"];
+
+    [common, grouped].forEach(function (wrap) {
+      Array.prototype.forEach.call(wrap.querySelectorAll(".emotion-tag[data-tag]"), function (btn) {
+        btn.addEventListener("click", function () { insertTag(btn.dataset.tag); });
+      });
+    });
+
+    els["emotion-tags-expand"].addEventListener("click", function () {
+      common.classList.add("is-hidden");
+      grouped.classList.remove("is-hidden");
+    });
+    els["emotion-tags-collapse"].addEventListener("click", function () {
+      grouped.classList.add("is-hidden");
+      common.classList.remove("is-hidden");
     });
   }
 
@@ -856,6 +890,7 @@
     els["out-play-toggle"].addEventListener("click", onToggleOutPlay);
     els["out-waveform"].addEventListener("click", onSeekOut);
     els["out-speed-toggle"].addEventListener("click", onCycleSpeed);
+    els["out-download"].addEventListener("click", onDownloadOut);
     wireOutAudioElement();
 
     els["generate-btn"].addEventListener("click", onGenerate);

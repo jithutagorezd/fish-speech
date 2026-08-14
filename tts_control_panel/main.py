@@ -29,7 +29,26 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 app.include_router(api_router)
 
-EMOTION_TAGS = ["laugh", "whisper", "excited", "sigh", "pause", "gasp", "angry", "curious"]
+# All 34 tags below are the exact "common tags" list documented for this
+# checkpoint — see checkpoints/s2-pro/README.md, "Fine-Grained Inline
+# Control". S2 Pro accepts free-form bracketed text (not a fixed enum), but
+# these are the tags it documents as reliably supported; anything else is
+# unverified. Grouped here (patch-bay categories) purely for the UI's
+# expanded view — the groups are a presentation grouping, not part of the
+# checkpoint's documentation.
+EMOTION_TAG_GROUPS = [
+    ("Pacing", ["pause", "short pause", "emphasis", "interrupting"]),
+    ("Breath & texture", ["inhale", "exhale", "sigh", "panting", "moaning", "clearing throat", "tsk"]),
+    ("Laughter", ["laughing", "chuckle", "chuckling", "laughing tone", "audience laughter"]),
+    ("Emotion", ["excited", "excited tone", "angry", "sad", "delight", "surprised", "shocked"]),
+    ("Dynamics", ["volume up", "volume down", "low volume", "loud", "echo", "low voice"]),
+    ("Performance", ["singing", "screaming", "shouting", "whisper", "with strong accent"]),
+]
+EMOTION_COMMON_TAGS = [
+    "pause", "whisper", "excited", "laughing", "sigh",
+    "sad", "angry", "singing", "emphasis", "volume up",
+]
+MAX_SCRIPT_WORDS = 5000
 
 DEFAULT_TEXT = (
     "Welcome back. [excited] This is going to be a good one. [pause] "
@@ -43,13 +62,15 @@ def control_panel(request: Request):
         request,
         "index.html",
         {
-            "brand_name": "Cadence",
-            "brand_initial": "C",
-            "brand_tagline": "voiceover generation workspace",
-            "docs_url": "#",
+            "brand_name": "Fish Speech Console",
+            "brand_initial": "F",
+            "brand_tagline": "long-form synthesis · voice cloning",
             "initial_text": DEFAULT_TEXT,
-            "emotion_tags": EMOTION_TAGS,
+            "emotion_common_tags": EMOTION_COMMON_TAGS,
+            "emotion_tag_groups": EMOTION_TAG_GROUPS,
+            "emotion_tag_more_count": sum(len(tags) for _, tags in EMOTION_TAG_GROUPS) - len(EMOTION_COMMON_TAGS),
             "default_chunk_words": 250,
+            "max_script_words": MAX_SCRIPT_WORDS,
             "generate_label": "Generate speech",
         },
     )

@@ -25,6 +25,7 @@ class ModelState:
         self.loading = False
         self.error: Optional[str] = None
         self._lock = threading.Lock()
+        self.generate_lock = threading.Lock()
 
     def load_async(self, settings: Settings) -> None:
         with self._lock:
