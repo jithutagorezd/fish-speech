@@ -378,6 +378,20 @@ html, body {
     min-width: 42px !important;
     min-height: 42px !important;
 }
+/* The mic/upload/output audio widgets are much narrower now (each voice
+   card is roughly a quarter of the viewport). A row of several 42px
+   icon buttons (play, trim, clear, ...) doesn't fit and can push the
+   Clear/trash button out of the visible row entirely. Scale those three
+   widgets' icon buttons down so the whole toolbar actually fits. */
+#mic-audio .icon-button-wrapper button,
+#mic-audio button.icon,
+#upload-audio .icon-button-wrapper button,
+#upload-audio button.icon,
+#audio-output .icon-button-wrapper button,
+#audio-output button.icon {
+    min-width: 32px !important;
+    min-height: 32px !important;
+}
 .gradio-container button svg {
     width: 18px;
     height: 18px;
@@ -491,7 +505,8 @@ html, body {
 .voice-hint {
     font-size: 0.85rem !important;
     color: var(--muted-c) !important;
-    margin: -6px 0 10px 0 !important;
+    margin: 0 0 10px 0 !important;
+    line-height: 1.5 !important;
 }
 
 /* ---- Voice status (near Generate) ---- */
@@ -555,9 +570,16 @@ html, body {
    animation plus the waveform's ResizeObserver still settling reads as
    the whole card "shaking" in Chrome. Reserving a fixed height means
    there's no size jump to animate, and killing the transition makes any
-   remaining state change instant instead of visibly animated. */
-#audio-output, #audio-output * {
+   remaining state change instant instead of visibly animated. The mic
+   and upload widgets go through the same empty -> loaded transition
+   (recording finishes / a file lands) so they get the same treatment. */
+#audio-output, #audio-output *,
+#mic-audio, #mic-audio *,
+#upload-audio, #upload-audio * {
     transition: none !important;
+}
+#mic-audio, #upload-audio {
+    min-height: 90px;
 }
 
 /* Empty-state message shown until the first generation completes, so the
