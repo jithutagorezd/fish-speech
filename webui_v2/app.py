@@ -227,6 +227,13 @@ html, body {
     height: 100% !important;
     min-height: 0 !important;
     overflow-y: auto !important;
+    /* On Windows Chrome, non-overlay scrollbars take up real width. If a
+       column's content height hovers right at the "needs a scrollbar"
+       threshold (e.g. right when the upload widget loads and grows),
+       the scrollbar can flicker in and out, shifting everything
+       horizontally each time — reads as the widget "shaking left and
+       right". Always reserving the gutter stops it from toggling. */
+    scrollbar-gutter: stable !important;
 }
 /* Clear visual separation between the input (left) and output (right)
    zones. */
