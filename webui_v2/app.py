@@ -298,6 +298,24 @@ html, body {
     color: var(--body-text-color-subdued);
     padding: 2px 4px;
 }
+.longform-nudge {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #b45309;
+    background: rgba(251, 191, 36, 0.18);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+/* ---- Voice card hint ---- */
+.voice-hint {
+    font-size: 0.78rem !important;
+    color: var(--body-text-color-subdued) !important;
+    margin: -2px 0 6px 0 !important;
+}
 
 /* ---- Generate button ---- */
 #generate-btn {
@@ -321,7 +339,7 @@ html, body {
 /* ---- Output panel ---- */
 #audio-output {
     border-radius: 14px !important;
-    min-height: 200px;
+    min-height: 90px;
 }
 /* Gradio's audio player animates its own height/opacity while it switches
    between empty / loading / loaded states. Combined with autoplay kicking
@@ -332,6 +350,34 @@ html, body {
    remaining state change instant instead of visibly animated. */
 #audio-output, #audio-output * {
     transition: none !important;
+}
+
+/* Empty-state message shown until the first generation completes, so the
+   output card doesn't read as broken/blank before anything's happened. */
+#output-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 100px;
+    color: var(--body-text-color-subdued);
+    font-size: 0.85rem;
+    border: 1px dashed var(--border-color-primary);
+    border-radius: 12px;
+    margin-bottom: 8px;
+}
+#output-placeholder:empty { display: none; }
+
+/* ---- Error banner ---- */
+.fish-error-banner {
+    background: rgba(244, 63, 94, 0.1);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    color: #be123c;
+    font-weight: 600;
+    font-size: 0.88rem;
+    padding: 10px 14px;
+    border-radius: 12px;
+    margin-bottom: 8px;
 }
 #error-box:empty { display: none; }
 
@@ -363,9 +409,20 @@ FISH_THEME = gr.themes.Soft(
 )
 
 
+# Past this many words, single-shot generation tends to get slow/unwieldy —
+# nudge toward Long-form instead of making the user go find the toggle.
+LONG_FORM_NUDGE_THRESHOLD = 500
+
+
 def _word_count_display(text: Optional[str]) -> str:
     n = count_words(text) if text and text.strip() else 0
-    return f'<span class="word-badge">📝 {n} words</span>'
+    html = f'<span class="word-badge">📝 {n} words</span>'
+    if n > LONG_FORM_NUDGE_THRESHOLD:
+        html += (
+            '<span class="longform-nudge">Long document — enable '
+            "Long-form in Advanced settings</span>"
+        )
+    return html
 
 
 def build_app(
@@ -481,6 +538,10 @@ def build_app(
 
                 with gr.Group(elem_classes=["fish-card"]):
                     gr.Markdown("### 🎤 Voice", elem_classes=["section-heading"])
+                    gr.Markdown(
+                        "5–10 seconds of clear speech gives the best clone.",
+                        elem_classes=["voice-hint"],
+                    )
                     reference_audio = gr.Audio(
                         label=i18n("Record or upload your reference voice"),
                         type="filepath",
@@ -488,7 +549,7 @@ def build_app(
                     )
 
                 generate_btn = gr.Button(
-                    "🎙️ Generate speech",
+                    "🎙️ " + i18n("Generate speech"),
                     variant="primary",
                     size="lg",
                     elem_id="generate-btn",
@@ -569,6 +630,10 @@ def build_app(
                 with gr.Group(elem_classes=["fish-card"]):
                     gr.Markdown("### 🔊 Output", elem_classes=["section-heading"])
                     error_out = gr.HTML(label=i18n("Error Message"), value="", elem_id="error-box")
+                    output_placeholder = gr.HTML(
+                        '<div class="output-placeholder-text">🔈 Your generated audio will appear here</div>',
+                        elem_id="output-placeholder",
+                    )
                     audio_out = gr.Audio(
                         label=i18n("Generated Audio"),
                         type="numpy",
@@ -594,7 +659,7 @@ def build_app(
             progress=gr.Progress(),
         ):
             if mode_radio == "Long-form (chunked)":
-                return run_long_form(
+                audio, err = run_long_form(
                     text,
                     reference_id,
                     reference_audio,
@@ -609,21 +674,29 @@ def build_app(
                     max_words_per_chunk,
                     progress,
                 )
-            return run_single(
-                text,
-                reference_id,
-                reference_audio,
-                reference_text,
-                max_new_tokens,
-                chunk_length,
-                top_p,
-                repetition_penalty,
-                temperature,
-                seed,
-                use_memory_cache,
-            )
+            else:
+                audio, err = run_single(
+                    text,
+                    reference_id,
+                    reference_audio,
+                    reference_text,
+                    max_new_tokens,
+                    chunk_length,
+                    top_p,
+                    repetition_penalty,
+                    temperature,
+                    seed,
+                    use_memory_cache,
+                )
+            # Third output clears the "will appear here" placeholder — once a
+            # generation has run (success or error), it's no longer useful.
+            return audio, err, ""
 
         generate_btn.click(
+            fn=lambda: gr.update(value="⏳ " + i18n("Generating…"), interactive=False),
+            inputs=None,
+            outputs=generate_btn,
+        ).then(
             fn=dispatch,
             inputs=[
                 text_input,
@@ -640,8 +713,12 @@ def build_app(
                 max_words_per_chunk,
                 mode,
             ],
-            outputs=[audio_out, error_out],
+            outputs=[audio_out, error_out, output_placeholder],
             concurrency_limit=1,
+        ).then(
+            fn=lambda: gr.update(value="🎙️ " + i18n("Generate speech"), interactive=True),
+            inputs=None,
+            outputs=generate_btn,
         )
 
         transcribe_btn.click(

@@ -25,7 +25,7 @@ def get_reference_audio(reference_audio: str, reference_text: Optional[str]) -> 
 
 def build_html_error_message(error: Any) -> str:
     err = error if isinstance(error, Exception) else Exception("Unknown error")
-    return f'<div style="color: red; font-weight: bold;">{html.escape(str(err))}</div>'
+    return f'<div class="fish-error-banner">⚠️ {html.escape(str(err))}</div>'
 
 
 def _run_single_inference(engine, req: ServeTTSRequest) -> Tuple[Optional[Tuple[int, np.ndarray]], Optional[str]]:
