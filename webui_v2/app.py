@@ -1004,23 +1004,35 @@ def build_app(
             outputs=[reference_text],
         )
 
-        def _voice_change(mic_path, upload_path, changed_source):
-            resolved = mic_path if changed_source == "mic" else upload_path
-            source = changed_source
-            if not resolved:
-                resolved = upload_path or mic_path
-                source = "upload" if upload_path else "mic"
-            return source, _voice_status_display(resolved)
+        # Mic and upload are mutually exclusive — recording something clears
+        # any uploaded file and vice versa, so at most one is ever populated.
+        # Without this, both widgets could hold content at once with no
+        # visible signal of which one would actually be used at generate
+        # time. Each handler only clears the *other* widget when it just
+        # received real content (a truthy new value); if it was cleared
+        # instead, it leaves the other widget alone and simply falls back
+        # to whichever one still has something.
+        def _on_mic_change(mic_path, upload_path):
+            if mic_path:
+                return gr.update(value=None), "mic", _voice_status_display(mic_path)
+            source = "upload" if upload_path else "mic"
+            return gr.update(), source, _voice_status_display(upload_path)
+
+        def _on_upload_change(mic_path, upload_path):
+            if upload_path:
+                return gr.update(value=None), "upload", _voice_status_display(upload_path)
+            source = "mic" if mic_path else "upload"
+            return gr.update(), source, _voice_status_display(mic_path)
 
         mic_audio.change(
-            fn=lambda m, u: _voice_change(m, u, "mic"),
+            fn=_on_mic_change,
             inputs=[mic_audio, upload_audio],
-            outputs=[active_source, voice_status],
+            outputs=[upload_audio, active_source, voice_status],
         )
         upload_audio.change(
-            fn=lambda m, u: _voice_change(m, u, "upload"),
+            fn=_on_upload_change,
             inputs=[mic_audio, upload_audio],
-            outputs=[active_source, voice_status],
+            outputs=[mic_audio, active_source, voice_status],
         )
 
         gr.HTML(FOOTER_HTML)
