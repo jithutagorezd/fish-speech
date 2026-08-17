@@ -21,13 +21,13 @@ HEADER_HTML = """
   <div class="fish-header-row">
     <div class="fish-logo">🐟</div>
     <div>
-      <div class="fish-title">Fish Speech <span class="fish-title-accent">S2</span></div>
+      <div class="fish-title">Audi<span class="fish-title-accent">fyz</span></div>
       <div class="fish-subtitle">Studio-grade voice cloning &amp; long-form narration</div>
     </div>
     <div class="fish-steps">
-      <span class="fish-step">🎙️ Record</span>
+      <span class="fish-step">🎙️ Add Voice</span>
       <span class="fish-step-arrow">→</span>
-      <span class="fish-step">✍️ Type</span>
+      <span class="fish-step">✍️ Write Text</span>
       <span class="fish-step-arrow">→</span>
       <span class="fish-step">🎧 Generate</span>
     </div>
@@ -116,7 +116,7 @@ EMOTION_TAG_INSERT_JS = """
 """
 
 FOOTER_HTML = """
-<div class="fish-footer">🐟 Powered by <b>Fish Speech S2</b></div>
+<div class="fish-footer">🐟 <b>Audifyz</b> — powered by Fish Speech S2</div>
 """
 
 CUSTOM_CSS = """
@@ -124,6 +124,10 @@ CUSTOM_CSS = """
     --fish-rose: #fb7185;
     --fish-orange: #fb923c;
     --fish-amber: #fbbf24;
+    /* Explicit (not theme-derived) muted text color, chosen for a safe
+       AA contrast ratio on light backgrounds regardless of how the
+       Gradio theme resolves --body-text-color-subdued. */
+    --fish-muted: #57534e;
 }
 
 /* ---- Page shell ----
@@ -168,6 +172,12 @@ html, body {
     min-height: 0 !important;
     overflow-y: auto !important;
 }
+/* Clear visual separation between the input (left) and output (right)
+   zones, per the "clear visual separation" requirement. */
+#output-column {
+    border-left: 1px solid var(--border-color-primary);
+    padding-left: 24px;
+}
 @media (max-width: 640px) {
     html, body, .gradio-container {
         height: auto !important;
@@ -180,6 +190,13 @@ html, body {
     #script-column, #output-column {
         height: auto !important;
         overflow: visible !important;
+    }
+    #output-column {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid var(--border-color-primary);
+        padding-top: 16px;
+        margin-top: 8px;
     }
 }
 
@@ -285,6 +302,18 @@ html, body {
     width: 18px;
     height: 18px;
 }
+/* Destructive actions (clear/remove a recording, etc.) get a distinct red
+   tint so they read differently from safe actions like download/play. */
+.gradio-container button[aria-label*="Clear" i],
+.gradio-container button[aria-label*="Remove" i],
+.gradio-container button[aria-label*="Delete" i] {
+    color: #e11d48 !important;
+}
+.gradio-container button[aria-label*="Clear" i]:hover,
+.gradio-container button[aria-label*="Remove" i]:hover,
+.gradio-container button[aria-label*="Delete" i]:hover {
+    background: rgba(225, 29, 72, 0.1) !important;
+}
 
 /* ---- Emotion tags ---- */
 .emotion-tags {
@@ -312,7 +341,7 @@ html, body {
     display: inline-block;
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--body-text-color-subdued);
+    color: var(--fish-muted);
     cursor: pointer;
     list-style: none;
 }
@@ -329,7 +358,7 @@ html, body {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--body-text-color-subdued);
+    color: var(--fish-muted);
     margin-bottom: 3px;
 }
 
@@ -338,7 +367,7 @@ html, body {
     display: inline-block;
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--body-text-color-subdued);
+    color: var(--fish-muted);
     padding: 2px 4px;
 }
 .longform-nudge {
@@ -356,15 +385,37 @@ html, body {
 /* ---- Voice card hint ---- */
 .voice-hint {
     font-size: 0.78rem !important;
-    color: var(--body-text-color-subdued) !important;
+    color: var(--fish-muted) !important;
     margin: -2px 0 6px 0 !important;
 }
 
-/* ---- Generate button ---- */
+/* ---- Voice status (near Generate) ---- */
+.voice-status {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--fish-muted);
+    margin: 6px 0 2px 2px;
+}
+.voice-status-active {
+    color: #be123c;
+}
+.voice-status-none {
+    color: #b45309;
+}
+
+/* ---- Generate button ----
+   Sticky to the bottom of its scrolling column so it stays reachable
+   even when Advanced settings (below it) is expanded and the column
+   scrolls — the primary action should never require hunting for it. */
 #generate-btn {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
     font-size: 1.1rem !important;
     font-weight: 700 !important;
     height: 56px !important;
+    width: 100% !important;
     border-radius: 14px !important;
     letter-spacing: .2px;
     margin-top: 8px;
@@ -377,6 +428,16 @@ html, body {
     transform: translateY(-2px);
     filter: brightness(1.06);
     box-shadow: 0 12px 28px rgba(251, 113, 133, .45);
+}
+
+/* ---- Advanced settings ----
+   A proper bordered card instead of Gradio's default thin accordion row. */
+#advanced-settings {
+    border: 1px solid var(--border-color-primary) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 2px 14px rgba(190, 18, 60, 0.05);
+    margin-top: 8px;
+    margin-bottom: 8px;
 }
 
 /* ---- Output panel ---- */
@@ -396,16 +457,18 @@ html, body {
 }
 
 /* Empty-state message shown until the first generation completes, so the
-   output card doesn't read as broken/blank before anything's happened. */
+   output card doesn't read as broken/blank before anything's happened.
+   Deliberately no border/dropzone styling — this isn't a drop target,
+   just a lightweight placeholder. */
 #output-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     min-height: 100px;
-    color: var(--body-text-color-subdued);
+    color: var(--fish-muted);
     font-size: 0.85rem;
-    border: 1px dashed var(--border-color-primary);
+    background: rgba(190, 18, 60, 0.03);
     border-radius: 12px;
     margin-bottom: 8px;
 }
@@ -427,7 +490,7 @@ html, body {
 /* ---- Footer ---- */
 .fish-footer {
     text-align: center;
-    color: var(--body-text-color-subdued);
+    color: var(--fish-muted);
     font-size: 0.78rem;
     margin-top: 10px;
     padding-top: 8px;
@@ -466,6 +529,14 @@ def _word_count_display(text: Optional[str]) -> str:
             "Long-form in Advanced settings</span>"
         )
     return html
+
+
+def _voice_status_display(reference_audio_path: Optional[str]) -> str:
+    if not reference_audio_path:
+        return '<span class="voice-status voice-status-none">⚠️ No voice selected</span>'
+    if DEFAULT_REFERENCE_AUDIO_PATH and reference_audio_path == DEFAULT_REFERENCE_AUDIO_PATH:
+        return '<span class="voice-status">🎙️ Using: Demo voice</span>'
+    return '<span class="voice-status voice-status-active">🎙️ Using: Your voice</span>'
 
 
 def build_app(
@@ -539,7 +610,7 @@ def build_app(
         return audio, err or ""
 
     with gr.Blocks(
-        title="Fish Speech S2 — WebUI v2",
+        title="Audifyz — Voice Cloning Studio",
         theme=FISH_THEME,
         css=CUSTOM_CSS,
     ) as app:
@@ -561,7 +632,22 @@ def build_app(
         with gr.Row(equal_height=False, elem_id="main-row"):
             with gr.Column(scale=3, min_width=280, elem_id="script-column"):
                 with gr.Group(elem_classes=["fish-card"]):
-                    gr.Markdown("### 📝 Script", elem_classes=["section-heading"])
+                    gr.Markdown("### 🎤 Add Your Voice", elem_classes=["section-heading"])
+                    gr.Markdown(
+                        "🎧 A demo voice is loaded — hit Generate to hear it, or "
+                        "record/upload your own to clone a different voice. "
+                        "Whatever you type below will be spoken in that voice.",
+                        elem_classes=["voice-hint"],
+                    )
+                    reference_audio = gr.Audio(
+                        label=i18n("Record or upload your reference voice"),
+                        type="filepath",
+                        sources=["microphone", "upload"],
+                        value=DEFAULT_REFERENCE_AUDIO_PATH,
+                    )
+
+                with gr.Group(elem_classes=["fish-card"]):
+                    gr.Markdown("### ✍️ What should it say?", elem_classes=["section-heading"])
                     text_input = gr.Textbox(
                         label=i18n("Input Text"),
                         placeholder="Paste or type text here. For long documents (3000–5000 words), turn on Long-form in Advanced settings.",
@@ -580,20 +666,10 @@ def build_app(
 
                     gr.HTML(EMOTION_TAGS_HTML)
 
-                with gr.Group(elem_classes=["fish-card"]):
-                    gr.Markdown("### 🎤 Clone this voice", elem_classes=["section-heading"])
-                    gr.Markdown(
-                        "🎧 A demo voice is loaded — hit Generate to hear it, or "
-                        "record/upload your own to clone a different voice. "
-                        "Everything you type above will be spoken in that voice.",
-                        elem_classes=["voice-hint"],
-                    )
-                    reference_audio = gr.Audio(
-                        label=i18n("Record or upload your reference voice"),
-                        type="filepath",
-                        sources=["microphone", "upload"],
-                        value=DEFAULT_REFERENCE_AUDIO_PATH,
-                    )
+                voice_status = gr.HTML(
+                    _voice_status_display(DEFAULT_REFERENCE_AUDIO_PATH),
+                    elem_id="voice-status",
+                )
 
                 generate_btn = gr.Button(
                     "🎙️ " + i18n("Generate speech"),
@@ -602,7 +678,9 @@ def build_app(
                     elem_id="generate-btn",
                 )
 
-                with gr.Accordion("⚙️ " + i18n("Advanced settings"), open=False):
+                with gr.Accordion(
+                    "⚙️ " + i18n("Advanced settings"), open=False, elem_id="advanced-settings"
+                ):
                     mode = gr.Radio(
                         label="Mode",
                         choices=["Single shot", "Long-form (chunked)"],
@@ -675,7 +753,7 @@ def build_app(
 
             with gr.Column(scale=2, min_width=240, elem_id="output-column"):
                 with gr.Group(elem_classes=["fish-card"]):
-                    gr.Markdown("### 🔊 Output", elem_classes=["section-heading"])
+                    gr.Markdown("### 🔊 Your Audio", elem_classes=["section-heading"])
                     error_out = gr.HTML(label=i18n("Error Message"), value="", elem_id="error-box")
                     output_placeholder = gr.HTML(
                         '<div class="output-placeholder-text">🔈 Your generated audio will appear here</div>',
@@ -772,6 +850,12 @@ def build_app(
             fn=whisper_transcribe_fn,
             inputs=[reference_audio],
             outputs=[reference_text],
+        )
+
+        reference_audio.change(
+            fn=_voice_status_display,
+            inputs=[reference_audio],
+            outputs=[voice_status],
         )
 
         gr.HTML(FOOTER_HTML)
