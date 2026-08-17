@@ -31,8 +31,7 @@ HEADER_HTML = """
 # checkpoints/s2-pro/README.md, "Fine-Grained Inline Control". S2 Pro accepts
 # free-form bracketed text (not a fixed enum), but these are the tags it
 # documents as reliably supported; anything else is unverified. Grouped here
-# purely for the UI's expanded view — mirrors tts_control_panel's grouping so
-# both UIs present the same tag set.
+# purely for the UI's expanded view.
 EMOTION_TAG_GROUPS = [
     ("Pacing", ["pause", "short pause", "emphasis", "interrupting"]),
     ("Breath & texture", ["inhale", "exhale", "sigh", "panting", "moaning", "clearing throat", "tsk"]),
@@ -271,6 +270,17 @@ CUSTOM_CSS = """
 /* ---- Output panel ---- */
 #audio-output {
     border-radius: 14px !important;
+    min-height: 200px;
+}
+/* Gradio's audio player animates its own height/opacity while it switches
+   between empty / loading / loaded states. Combined with autoplay kicking
+   in immediately (and its timeupdate polling for the progress bar), that
+   animation plus the waveform's ResizeObserver still settling reads as
+   the whole card "shaking" in Chrome. Reserving a fixed height means
+   there's no size jump to animate, and killing the transition makes any
+   remaining state change instant instead of visibly animated. */
+#audio-output, #audio-output * {
+    transition: none !important;
 }
 #error-box:empty { display: none; }
 

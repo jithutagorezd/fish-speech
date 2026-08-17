@@ -116,7 +116,3 @@ ffprobe.exe
 # ----------
 /*.test.sh
 asr-label*
-
-# Cadence TTS Control Panel (tts_control_panel/)
-# -----------------------------------------------
-run/
