@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--half", action="store_true")
     parser.add_argument("--compile", action="store_true")
-    parser.add_argument("--theme", type=str, default="light")
+    parser.add_argument("--theme", type=str, default="dark")
     parser.add_argument(
         "--whisper-model-dir",
         type=Path,
