@@ -38,7 +38,6 @@ EMOTION_TAG_GROUPS = [
     ("Laughter", ["laughing", "chuckle", "chuckling", "laughing tone", "audience laughter"]),
     ("Emotion", ["excited", "excited tone", "angry", "sad", "delight", "surprised", "shocked"]),
     ("Dynamics", ["volume up", "volume down", "low volume", "loud", "echo", "low voice"]),
-    ("Performance", ["singing", "screaming", "shouting", "whisper", "with strong accent"]),
 ]
 
 
@@ -649,19 +648,6 @@ def build_app(
             fn=whisper_transcribe_fn,
             inputs=[reference_audio],
             outputs=[reference_text],
-        )
-
-        gr.Examples(
-            label="✨ Examples",
-            examples=[
-                ["Hello! This is a short test of Fish Speech S2.", "Single shot"],
-                ["[laughing] I can't believe it! This model supports emotion tags.", "Single shot"],
-                [
-                    "First paragraph of your long document.\n\nSecond paragraph here.\n\nThird paragraph.",
-                    "Long-form (chunked)",
-                ],
-            ],
-            inputs=[text_input, mode],
         )
 
         gr.HTML(FOOTER_HTML)
