@@ -18,16 +18,11 @@ from webui_v2.utils import count_words
 HEADER_HTML = """
 <div class="fish-header">
   <div class="fish-header-row">
-    <div>
-      <div class="fish-title">Audifyz <span class="fish-title-accent">Voice Cloner</span></div>
-      <div class="fish-subtitle">Studio-grade voice cloning &amp; long-form narration</div>
-    </div>
-    <div class="fish-steps">
-      <span class="fish-step">🎙️ Add Voice</span>
-      <span class="fish-step-arrow">→</span>
-      <span class="fish-step">✍️ Write Text</span>
-      <span class="fish-step-arrow">→</span>
-      <span class="fish-step">🎧 Generate</span>
+    <div class="fish-brand">
+      <span class="fish-logo-bars">
+        <span class="bar bar-1"></span><span class="bar bar-2"></span><span class="bar bar-3"></span>
+      </span>
+      <span class="fish-title">AUDIFYZ <span class="fish-title-accent">VOICE CLONER</span></span>
     </div>
   </div>
 </div>
@@ -135,17 +130,24 @@ FOOTER_HTML = """
 """
 
 CUSTOM_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&display=swap');
 
 :root {
-    --bg: #101118;
-    --panel: #181A24;
-    --panel-2: #1F2230;
-    --border-c: #2A2D3C;
-    --text-c: #EDEDF3;
-    --muted-c: #8B8EA3;
-    --accent: #8B6CFF;
-    --accent-2: #3FE6C4;
+    /* The app fills the whole browser viewport (see .gradio-container
+       below), so --bg and --panel are deliberately the same white —
+       there's no separate gray page behind a smaller white card. Cards
+       are distinguished purely by border lines, matching the reference
+       design's white-on-white panel look without reintroducing the page
+       gutters we removed earlier. */
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #f8fafc;
+    --border-c: #e2e8f0;
+    --text-c: #0f172a;
+    --muted-c: #64748b;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-dark: #1e1b4b;
 }
 
 /* ---- Page shell ----
@@ -176,7 +178,7 @@ html, body {
     background: var(--bg) !important;
     color: var(--text-c) !important;
     /* Best-effort override of Gradio's own theme tokens, so built-in
-       components (labels, inputs, blocks) inherit the dark palette even
+       components (labels, inputs, blocks) inherit this palette even
        where we haven't targeted them by id/class directly below. */
     --body-background-fill: var(--bg) !important;
     --background-fill-primary: var(--panel) !important;
@@ -221,14 +223,14 @@ html, body {
     min-height: 0 !important;
     flex-wrap: nowrap !important;
 }
-#script-column, #output-column {
+#voice-column, #studio-column {
     height: 100% !important;
     min-height: 0 !important;
     overflow-y: auto !important;
 }
 /* Clear visual separation between the input (left) and output (right)
    zones. */
-#output-column {
+#studio-column {
     border-left: 1px solid var(--border-c);
     padding-left: 24px;
 }
@@ -241,11 +243,11 @@ html, body {
         flex-wrap: wrap !important;
         height: auto !important;
     }
-    #script-column, #output-column {
+    #voice-column, #studio-column {
         height: auto !important;
         overflow: visible !important;
     }
-    #output-column {
+    #studio-column {
         border-left: none;
         padding-left: 0;
         border-top: 1px solid var(--border-c);
@@ -263,63 +265,61 @@ html, body {
 .fish-header-row {
     display: flex;
     align-items: center;
-    gap: 12px;
 }
+.fish-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.fish-logo-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 20px;
+}
+.fish-logo-bars .bar {
+    width: 4px;
+    border-radius: 2px;
+    background: var(--accent-dark);
+}
+.fish-logo-bars .bar-1 { height: 12px; }
+.fish-logo-bars .bar-2 { height: 20px; }
+.fish-logo-bars .bar-3 { height: 16px; }
 .fish-title {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     color: var(--text-c) !important;
 }
 .fish-title-accent {
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent !important;
-}
-.fish-subtitle {
-    font-size: 0.8rem;
-    color: var(--muted-c) !important;
-}
-.fish-steps {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
-.fish-step {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-c);
-    background: var(--panel-2);
-    border: 1px solid var(--border-c);
-    padding: 5px 11px;
-    border-radius: 999px;
-    white-space: nowrap;
-}
-.fish-step-arrow {
-    color: var(--muted-c);
-    font-size: 0.8rem;
-}
-@media (max-width: 900px) {
-    .fish-steps { display: none; }
+    color: var(--accent) !important;
+    font-weight: 800;
 }
 
 /* ---- Step kickers ---- */
 .step-kicker {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--accent-2);
+    letter-spacing: 0.06em;
+    color: var(--muted-c);
     margin: 0 0 4px 2px;
 }
 
-/* ---- Section headings ---- */
+/* ---- Headings ---- */
+.column-heading {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    color: var(--text-c) !important;
+    margin: 0 0 10px 0 !important;
+}
+.heading-sub {
+    font-weight: 500;
+    color: var(--muted-c);
+    font-size: 0.95rem;
+}
 .section-heading {
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 700 !important;
@@ -332,7 +332,16 @@ html, body {
 .fish-card {
     background: var(--panel) !important;
     border: 1px solid var(--border-c) !important;
-    border-radius: 18px !important;
+    border-radius: 14px !important;
+    box-shadow: none !important;
+}
+/* Nested card (e.g. the "Generated Speech" box inside the Generate panel) —
+   a subtly different fill so it reads as a secondary surface within the
+   card rather than a competing top-level card. */
+.fish-card-nested {
+    background: var(--panel-2) !important;
+    border: 1px solid var(--border-c) !important;
+    border-radius: 12px !important;
     box-shadow: none !important;
 }
 
@@ -340,17 +349,12 @@ html, body {
 #voice-source-row {
     gap: 12px;
 }
-#mic-audio, #upload-audio {
-    background: var(--panel-2) !important;
-    border: 1px solid var(--border-c) !important;
-    border-radius: 14px !important;
-}
 
 /* ---- Buttons: bigger and more tactile everywhere ---- */
 .gradio-container button {
-    border-radius: 12px !important;
+    border-radius: 10px !important;
     font-weight: 600 !important;
-    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease, background .12s ease;
 }
 .gradio-container button:active {
     transform: scale(0.97);
@@ -360,9 +364,12 @@ html, body {
     min-height: 44px !important;
     padding: 10px 20px !important;
     font-size: 0.95rem !important;
-    background: var(--panel-2) !important;
+    background: var(--panel) !important;
     color: var(--text-c) !important;
     border: 1px solid var(--border-c) !important;
+}
+.gradio-container button[class*="secondary"]:hover {
+    background: var(--panel-2) !important;
 }
 /* Icon-only buttons (record / upload / play toggles inside the audio
    widget) are tiny by default — give them real tap targets. */
@@ -380,12 +387,12 @@ html, body {
 .gradio-container button[aria-label*="Clear" i],
 .gradio-container button[aria-label*="Remove" i],
 .gradio-container button[aria-label*="Delete" i] {
-    color: #fb7185 !important;
+    color: #dc2626 !important;
 }
 .gradio-container button[aria-label*="Clear" i]:hover,
 .gradio-container button[aria-label*="Remove" i]:hover,
 .gradio-container button[aria-label*="Delete" i]:hover {
-    background: rgba(251, 113, 133, 0.14) !important;
+    background: rgba(220, 38, 38, 0.08) !important;
 }
 
 /* ---- Emotion tags (full grouped list) ---- */
@@ -400,13 +407,13 @@ html, body {
     font-size: 0.78rem;
     padding: 5px 11px;
     border-radius: 999px;
-    background: rgba(139, 108, 255, 0.14);
-    border: 1px solid rgba(139, 108, 255, 0.35);
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.25);
     color: var(--text-c);
     cursor: pointer;
 }
 .emotion-tag:hover {
-    background: rgba(139, 108, 255, 0.26);
+    background: rgba(37, 99, 235, 0.16);
 }
 
 .emotion-tag-details { margin-top: 8px; }
@@ -455,14 +462,13 @@ html, body {
 }
 .emotion-pill:hover { border-color: var(--accent); }
 .emotion-pill-active {
-    background: var(--accent) !important;
-    border-color: var(--accent) !important;
-    color: #0E0F16 !important;
+    background: var(--accent-dark) !important;
+    border-color: var(--accent-dark) !important;
+    color: #ffffff !important;
 }
 
 /* ---- Word count badge ---- */
 .word-badge {
-    font-family: 'JetBrains Mono', monospace;
     display: inline-block;
     font-size: 0.78rem;
     font-weight: 600;
@@ -474,34 +480,33 @@ html, body {
     margin-left: 6px;
     font-size: 0.72rem;
     font-weight: 700;
-    color: #fbbf24;
-    background: rgba(251, 191, 36, 0.14);
-    border: 1px solid rgba(251, 191, 36, 0.35);
+    color: #b45309;
+    background: rgba(217, 119, 6, 0.08);
+    border: 1px solid rgba(217, 119, 6, 0.3);
     padding: 3px 9px;
     border-radius: 999px;
 }
 
 /* ---- Voice card hint ---- */
 .voice-hint {
-    font-size: 0.78rem !important;
+    font-size: 0.85rem !important;
     color: var(--muted-c) !important;
-    margin: -2px 0 6px 0 !important;
+    margin: -6px 0 10px 0 !important;
 }
 
 /* ---- Voice status (near Generate) ---- */
 .voice-status {
-    font-family: 'JetBrains Mono', monospace;
     display: block;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--muted-c);
     margin: 6px 0 2px 2px;
 }
 .voice-status-active {
-    color: var(--accent-2);
+    color: var(--accent);
 }
 .voice-status-none {
-    color: #fbbf24;
+    color: #b45309;
 }
 
 /* ---- Generate button ----
@@ -512,39 +517,37 @@ html, body {
     position: sticky;
     bottom: 0;
     z-index: 5;
-    font-size: 1.1rem !important;
+    font-size: 1rem !important;
     font-weight: 700 !important;
-    height: 56px !important;
+    height: 52px !important;
     width: 100% !important;
-    border-radius: 14px !important;
-    letter-spacing: .2px;
+    border-radius: 12px !important;
     margin-top: 8px;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%) !important;
+    background: var(--accent) !important;
     border: none !important;
-    color: #0E0F16 !important;
-    box-shadow: 0 8px 20px rgba(139, 108, 255, .35);
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, .25);
 }
 #generate-btn:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.06);
-    box-shadow: 0 12px 28px rgba(139, 108, 255, .45);
+    background: var(--accent-hover) !important;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, .35);
 }
 
 /* ---- Advanced settings ----
    A proper bordered card instead of Gradio's default thin accordion row. */
 #advanced-settings {
-    background: var(--panel) !important;
+    background: var(--panel-2) !important;
     border: 1px solid var(--border-c) !important;
-    border-radius: 18px !important;
+    border-radius: 12px !important;
     margin-top: 8px;
     margin-bottom: 8px;
 }
 
 /* ---- Output panel ---- */
 #audio-output {
-    border-radius: 14px !important;
+    border-radius: 12px !important;
     min-height: 90px;
-    background: var(--panel-2) !important;
+    background: var(--panel) !important;
 }
 /* Gradio's audio player animates its own height/opacity while it switches
    between empty / loading / loaded states. Combined with autoplay kicking
@@ -566,11 +569,11 @@ html, body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    min-height: 100px;
+    min-height: 90px;
     color: var(--muted-c);
     font-size: 0.85rem;
-    background: rgba(139, 108, 255, 0.06);
-    border-radius: 12px;
+    background: var(--panel);
+    border-radius: 10px;
     margin-bottom: 8px;
 }
 #output-placeholder:empty { display: none; }
@@ -581,13 +584,13 @@ html, body {
 
 /* ---- Error banner ---- */
 .fish-error-banner {
-    background: rgba(251, 113, 133, 0.12);
-    border: 1px solid rgba(251, 113, 133, 0.4);
-    color: #fb7185;
+    background: rgba(220, 38, 38, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    color: #dc2626;
     font-weight: 600;
     font-size: 0.88rem;
     padding: 10px 14px;
-    border-radius: 12px;
+    border-radius: 10px;
     margin-bottom: 8px;
 }
 #error-box:empty { display: none; }
@@ -604,17 +607,17 @@ html, body {
 """
 
 FISH_THEME = gr.themes.Base(
-    primary_hue="violet",
-    secondary_hue="teal",
+    primary_hue="blue",
+    secondary_hue="indigo",
     neutral_hue="slate",
     font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
 ).set(
-    block_radius="16px",
-    block_shadow="0 2px 14px rgba(0, 0, 0, 0.3)",
-    button_primary_background_fill="linear-gradient(135deg, #8B6CFF 0%, #3FE6C4 100%)",
-    button_primary_background_fill_hover="linear-gradient(135deg, #7c5ce6 0%, #35cdae 100%)",
-    button_primary_text_color="#0E0F16",
-    button_large_radius="14px",
+    block_radius="14px",
+    block_shadow="none",
+    button_primary_background_fill="#2563eb",
+    button_primary_background_fill_hover="#1d4ed8",
+    button_primary_text_color="#ffffff",
+    button_large_radius="12px",
     button_large_padding="14px 24px",
     button_small_padding="8px 16px",
 )
@@ -638,7 +641,7 @@ def _word_count_display(text: Optional[str]) -> str:
 
 def _voice_status_display(reference_audio_path: Optional[str]) -> str:
     if not reference_audio_path:
-        return '<span class="voice-status voice-status-none">⚠️ No voice selected — record or upload one below</span>'
+        return '<span class="voice-status voice-status-none">⚠️ No voice selected — record or upload one</span>'
     return '<span class="voice-status voice-status-active">🎙️ Using: Your voice</span>'
 
 
@@ -660,7 +663,7 @@ def _resolve_reference_audio(
 
 def build_app(
     engine,
-    theme: str = "dark",
+    theme: str = "light",
     whisper_model_dir: str = "checkpoints/whisper-small-pt",
 ) -> gr.Blocks:
     inference_single_fn = get_inference_single_wrapper(engine)
@@ -743,42 +746,50 @@ def build_app(
         )
         app.load(None, None, js=EMOTION_TAG_INSERT_JS)
 
-        # Primary flow: voice (record or upload, two separate cards) -> script
-        # -> generate -> output. Everything else (chunking mode, reference id,
-        # memory cache, sampling params) lives in one collapsed Advanced
-        # settings accordion so the default view stays focused.
+        # Left: voice input only (record + upload, two separate cards).
+        # Right: script, emotion, generate, advanced settings, and a nested
+        # "Generated Speech" card for the result — mirrors a single
+        # Source -> Generate two-step flow.
         with gr.Row(equal_height=False, elem_id="main-row"):
-            with gr.Column(scale=3, min_width=280, elem_id="script-column"):
-                with gr.Group(elem_classes=["fish-card"]):
-                    gr.HTML('<p class="step-kicker">Step 1 — Source</p>')
-                    gr.Markdown("### 🎤 Add Your Voice", elem_classes=["section-heading"])
-                    gr.Markdown(
-                        "Record or upload a short voice sample — whatever you type "
-                        "below will be spoken in that voice.",
-                        elem_classes=["voice-hint"],
-                    )
-                    with gr.Row(elem_id="voice-source-row"):
+            with gr.Column(scale=1, min_width=320, elem_id="voice-column"):
+                gr.HTML('<p class="step-kicker">Step 1 — Record or upload your voice</p>')
+                gr.Markdown(
+                    '## 🎤 Voice Input <span class="heading-sub">(Cloning)</span>',
+                    elem_classes=["column-heading"],
+                )
+                gr.Markdown(
+                    "Record or upload a short voice sample — whatever you type "
+                    "on the right will be spoken in that voice.",
+                    elem_classes=["voice-hint"],
+                )
+                with gr.Row(elem_id="voice-source-row"):
+                    with gr.Group(elem_classes=["fish-card"]):
+                        gr.Markdown("### 🎙️ Mic Record", elem_classes=["section-heading"])
                         mic_audio = gr.Audio(
-                            label="🎙️ Record with mic",
+                            show_label=False,
                             type="filepath",
                             sources=["microphone"],
                             elem_id="mic-audio",
                         )
+                    with gr.Group(elem_classes=["fish-card"]):
+                        gr.Markdown("### 📁 Upload File", elem_classes=["section-heading"])
                         upload_audio = gr.Audio(
-                            label="📁 Upload a file",
+                            show_label=False,
                             type="filepath",
                             sources=["upload"],
                             elem_id="upload-audio",
                         )
-                    active_source = gr.State("mic")
+                active_source = gr.State("mic")
+
+            with gr.Column(scale=1, min_width=320, elem_id="studio-column"):
+                gr.HTML('<p class="step-kicker">Step 2 — Generate speech from your cloned voice</p>')
+                gr.Markdown("## ✍️ Generate Speech", elem_classes=["column-heading"])
 
                 with gr.Group(elem_classes=["fish-card"]):
-                    gr.HTML('<p class="step-kicker">Step 2 — Script</p>')
-                    gr.Markdown("### ✍️ What should it say?", elem_classes=["section-heading"])
                     text_input = gr.Textbox(
                         label=i18n("Input Text"),
                         placeholder="Paste or type text here. For long documents (3000–5000 words), turn on Long-form in Advanced settings.",
-                        lines=5,
+                        lines=4,
                         max_lines=30,
                         show_label=False,
                         elem_id="script-input",
@@ -793,113 +804,111 @@ def build_app(
                     gr.HTML(QUICK_EMOTION_HTML)
                     gr.HTML(EMOTION_TAGS_HTML)
 
-                voice_status = gr.HTML(
-                    _voice_status_display(None),
-                    elem_id="voice-status",
-                )
+                    voice_status = gr.HTML(
+                        _voice_status_display(None),
+                        elem_id="voice-status",
+                    )
 
-                generate_btn = gr.Button(
-                    "🎙️ " + i18n("Generate speech"),
-                    variant="primary",
-                    size="lg",
-                    elem_id="generate-btn",
-                )
+                    generate_btn = gr.Button(
+                        "🎙️ " + i18n("Generate speech"),
+                        variant="primary",
+                        size="lg",
+                        elem_id="generate-btn",
+                    )
 
-                with gr.Accordion(
-                    "⚙️ " + i18n("Advanced settings"), open=False, elem_id="advanced-settings"
-                ):
-                    mode = gr.Radio(
-                        label="Mode",
-                        choices=["Single shot", "Long-form (chunked)"],
-                        value="Single shot",
-                    )
-                    max_words_per_chunk = gr.Slider(
-                        label="Max words per chunk (long-form only)",
-                        minimum=100,
-                        maximum=500,
-                        value=200,
-                        step=50,
-                    )
-                    reference_id = gr.Textbox(
-                        label=i18n("Reference ID"),
-                        placeholder="Leave empty to use the reference audio above",
-                        value="",
-                    )
-                    transcribe_btn = gr.Button(
-                        "🎤 " + i18n("Auto-transcribe reference audio with Whisper"),
-                        variant="secondary",
-                        size="sm",
-                    )
-                    reference_text = gr.Textbox(
-                        label=i18n("Reference Text"),
-                        placeholder="Transcription of the reference audio, or use Auto-transcribe. Improves voice-clone accuracy but isn't required.",
-                        lines=2,
-                        value="",
-                    )
-                    use_memory_cache = gr.Radio(
-                        label=i18n("Use Memory Cache"),
-                        choices=["on", "off"],
-                        value="on",
-                    )
-                    chunk_length = gr.Slider(
-                        label=i18n("Iterative Prompt Length, 0 means off"),
-                        minimum=100,
-                        maximum=300,
-                        value=200,
-                        step=8,
-                    )
-                    max_new_tokens = gr.Slider(
-                        label=i18n("Maximum tokens per batch, 0 means no limit"),
-                        minimum=0,
-                        maximum=2048,
-                        value=0,
-                        step=8,
-                    )
-                    with gr.Row():
-                        top_p = gr.Slider(label="Top-P", minimum=0.7, maximum=0.95, value=0.8, step=0.01)
-                        repetition_penalty = gr.Slider(
-                            label=i18n("Repetition Penalty"),
-                            minimum=1,
-                            maximum=1.2,
-                            value=1.1,
-                            step=0.01,
+                    with gr.Accordion(
+                        "⚙️ " + i18n("Advanced settings"), open=False, elem_id="advanced-settings"
+                    ):
+                        mode = gr.Radio(
+                            label="Mode",
+                            choices=["Single shot", "Long-form (chunked)"],
+                            value="Single shot",
                         )
-                    with gr.Row():
-                        temperature = gr.Slider(
-                            label="Temperature",
-                            minimum=0.7,
-                            maximum=1.0,
-                            value=0.8,
-                            step=0.01,
+                        max_words_per_chunk = gr.Slider(
+                            label="Max words per chunk (long-form only)",
+                            minimum=100,
+                            maximum=500,
+                            value=200,
+                            step=50,
                         )
-                        seed = gr.Number(
-                            label="Seed",
+                        reference_id = gr.Textbox(
+                            label=i18n("Reference ID"),
+                            placeholder="Leave empty to use the reference audio above",
+                            value="",
+                        )
+                        transcribe_btn = gr.Button(
+                            "🎤 " + i18n("Auto-transcribe reference audio with Whisper"),
+                            variant="secondary",
+                            size="sm",
+                        )
+                        reference_text = gr.Textbox(
+                            label=i18n("Reference Text"),
+                            placeholder="Transcription of the reference audio, or use Auto-transcribe. Improves voice-clone accuracy but isn't required.",
+                            lines=2,
+                            value="",
+                        )
+                        use_memory_cache = gr.Radio(
+                            label=i18n("Use Memory Cache"),
+                            choices=["on", "off"],
+                            value="on",
+                        )
+                        chunk_length = gr.Slider(
+                            label=i18n("Iterative Prompt Length, 0 means off"),
+                            minimum=100,
+                            maximum=300,
+                            value=200,
+                            step=8,
+                        )
+                        max_new_tokens = gr.Slider(
+                            label=i18n("Maximum tokens per batch, 0 means no limit"),
+                            minimum=0,
+                            maximum=2048,
                             value=0,
-                            precision=0,
+                            step=8,
                         )
+                        with gr.Row():
+                            top_p = gr.Slider(label="Top-P", minimum=0.7, maximum=0.95, value=0.8, step=0.01)
+                            repetition_penalty = gr.Slider(
+                                label=i18n("Repetition Penalty"),
+                                minimum=1,
+                                maximum=1.2,
+                                value=1.1,
+                                step=0.01,
+                            )
+                        with gr.Row():
+                            temperature = gr.Slider(
+                                label="Temperature",
+                                minimum=0.7,
+                                maximum=1.0,
+                                value=0.8,
+                                step=0.01,
+                            )
+                            seed = gr.Number(
+                                label="Seed",
+                                value=0,
+                                precision=0,
+                            )
 
-            with gr.Column(scale=2, min_width=240, elem_id="output-column"):
-                with gr.Group(elem_classes=["fish-card"]):
-                    gr.HTML('<p class="step-kicker">Step 3 — Result</p>')
-                    gr.Markdown("### 🔊 Your Audio", elem_classes=["section-heading"])
-                    error_out = gr.HTML(label=i18n("Error Message"), value="", elem_id="error-box")
-                    output_placeholder = gr.HTML(
-                        '<div class="output-placeholder-text">🔈 Your generated audio will appear here</div>',
-                        elem_id="output-placeholder",
-                    )
-                    audio_out = gr.Audio(
-                        label=i18n("Generated Audio"),
-                        type="numpy",
-                        interactive=False,
-                        autoplay=True,
-                        elem_id="audio-output",
-                    )
-                    regenerate_btn = gr.Button(
-                        "🔁 Regenerate",
-                        variant="secondary",
-                        size="sm",
-                        elem_id="regenerate-btn",
-                    )
+                    with gr.Group(elem_classes=["fish-card-nested"]):
+                        gr.Markdown("### 🔊 Generated Speech", elem_classes=["section-heading"])
+                        error_out = gr.HTML(label=i18n("Error Message"), value="", elem_id="error-box")
+                        output_placeholder = gr.HTML(
+                            '<div class="output-placeholder-text">🔈 Your generated audio will appear here</div>',
+                            elem_id="output-placeholder",
+                        )
+                        audio_out = gr.Audio(
+                            label=i18n("Generated Audio"),
+                            type="numpy",
+                            interactive=False,
+                            autoplay=True,
+                            elem_id="audio-output",
+                        )
+                        regenerate_btn = gr.Button(
+                            "🔁 Regenerate",
+                            variant="secondary",
+                            size="sm",
+                            elem_id="regenerate-btn",
+                        )
 
         def dispatch(
             text,
