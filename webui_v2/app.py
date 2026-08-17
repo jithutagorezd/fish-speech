@@ -112,6 +112,20 @@ CUSTOM_CSS = """
     margin: 0 auto !important;
 }
 
+/* ---- Main layout ----
+   Gradio wraps a Row's columns into a stacked, single-column layout
+   whenever they can't fit side by side at their min_width, which reads
+   as a tall "mobile" page even on a desktop-width window. Force the two
+   main columns to stay side by side down to genuine phone widths. */
+#main-row {
+    flex-wrap: nowrap !important;
+}
+@media (max-width: 640px) {
+    #main-row {
+        flex-wrap: wrap !important;
+    }
+}
+
 /* ---- Header banner ---- */
 .fish-header {
     background: linear-gradient(135deg, #1e1145 0%, #be123c 55%, #fb923c 100%);
@@ -407,8 +421,8 @@ def build_app(
         # Everything else (chunking mode, reference id, memory cache, sampling
         # params) lives in one collapsed Advanced settings accordion so the
         # default view stays to four things.
-        with gr.Row(equal_height=False):
-            with gr.Column(scale=3):
+        with gr.Row(equal_height=False, elem_id="main-row"):
+            with gr.Column(scale=3, min_width=280):
                 with gr.Group(elem_classes=["fish-card"]):
                     gr.Markdown("### 📝 Script", elem_classes=["section-heading"])
                     text_input = gr.Textbox(
@@ -514,7 +528,7 @@ def build_app(
                             precision=0,
                         )
 
-            with gr.Column(scale=2):
+            with gr.Column(scale=2, min_width=240):
                 with gr.Group(elem_classes=["fish-card"]):
                     gr.Markdown("### 🔊 Output", elem_classes=["section-heading"])
                     error_out = gr.HTML(label=i18n("Error Message"), value="", elem_id="error-box")
