@@ -2,7 +2,6 @@
 Fish Speech WebUI v2 — rich interface with long-form TTS support.
 """
 
-from pathlib import Path
 from typing import Optional
 
 import gradio as gr
@@ -33,18 +32,6 @@ HEADER_HTML = """
   </div>
 </div>
 """
-
-# A ready-to-play demo so a first-time visitor can hit Generate immediately
-# and hear the concept ("your text, spoken in that voice") without having
-# to record anything or read an explanation first.
-_REPO_ROOT = Path(__file__).resolve().parent.parent
-_DEFAULT_REFERENCE_AUDIO = (
-    _REPO_ROOT / "test_audio" / "female" / "Amelia Taylor" / "ai_generated.wav"
-)
-DEFAULT_REFERENCE_AUDIO_PATH = (
-    str(_DEFAULT_REFERENCE_AUDIO) if _DEFAULT_REFERENCE_AUDIO.exists() else None
-)
-DEFAULT_SCRIPT_TEXT = "Hello! This is a preview of how your cloned voice sounds."
 
 # The exact "common tags" list documented for this checkpoint — see
 # checkpoints/s2-pro/README.md, "Fine-Grained Inline Control". S2 Pro accepts
@@ -527,9 +514,7 @@ def _word_count_display(text: Optional[str]) -> str:
 
 def _voice_status_display(reference_audio_path: Optional[str]) -> str:
     if not reference_audio_path:
-        return '<span class="voice-status voice-status-none">⚠️ No voice selected</span>'
-    if DEFAULT_REFERENCE_AUDIO_PATH and reference_audio_path == DEFAULT_REFERENCE_AUDIO_PATH:
-        return '<span class="voice-status">🎙️ Using: Demo voice</span>'
+        return '<span class="voice-status voice-status-none">⚠️ No voice selected — record or upload one below</span>'
     return '<span class="voice-status voice-status-active">🎙️ Using: Your voice</span>'
 
 
@@ -628,16 +613,14 @@ def build_app(
                 with gr.Group(elem_classes=["fish-card"]):
                     gr.Markdown("### 🎤 Add Your Voice", elem_classes=["section-heading"])
                     gr.Markdown(
-                        "🎧 A demo voice is loaded — hit Generate to hear it, or "
-                        "record/upload your own to clone a different voice. "
-                        "Whatever you type below will be spoken in that voice.",
+                        "Record or upload a short voice sample — whatever you type "
+                        "below will be spoken in that voice.",
                         elem_classes=["voice-hint"],
                     )
                     reference_audio = gr.Audio(
                         label=i18n("Record or upload your reference voice"),
                         type="filepath",
                         sources=["microphone", "upload"],
-                        value=DEFAULT_REFERENCE_AUDIO_PATH,
                     )
 
                 with gr.Group(elem_classes=["fish-card"]):
@@ -645,13 +628,12 @@ def build_app(
                     text_input = gr.Textbox(
                         label=i18n("Input Text"),
                         placeholder="Paste or type text here. For long documents (3000–5000 words), turn on Long-form in Advanced settings.",
-                        value=DEFAULT_SCRIPT_TEXT,
                         lines=5,
                         max_lines=30,
                         show_label=False,
                         elem_id="script-input",
                     )
-                    word_count = gr.HTML(_word_count_display(DEFAULT_SCRIPT_TEXT))
+                    word_count = gr.HTML(_word_count_display(None))
                     text_input.change(
                         fn=_word_count_display,
                         inputs=[text_input],
@@ -661,7 +643,7 @@ def build_app(
                     gr.HTML(EMOTION_TAGS_HTML)
 
                 voice_status = gr.HTML(
-                    _voice_status_display(DEFAULT_REFERENCE_AUDIO_PATH),
+                    _voice_status_display(None),
                     elem_id="voice-status",
                 )
 
