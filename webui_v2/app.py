@@ -107,22 +107,60 @@ CUSTOM_CSS = """
     --fish-amber: #fbbf24;
 }
 
+/* ---- Page shell ----
+   Pin the whole app to exactly one viewport: no page-level scrolling,
+   nothing growing/shrinking the document as content changes. The two
+   side columns each fill the shell's height and scroll internally
+   instead, so opening the Advanced accordion (etc.) can't resize the
+   page itself. */
+html, body {
+    height: 100% !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+}
 .gradio-container {
-    max-width: 1440px !important;
-    margin: 0 auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding-left: 28px !important;
+    padding-right: 28px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
 }
 
 /* ---- Main layout ----
    Gradio wraps a Row's columns into a stacked, single-column layout
    whenever they can't fit side by side at their min_width, which reads
    as a tall "mobile" page even on a desktop-width window. Force the two
-   main columns to stay side by side down to genuine phone widths. */
+   main columns to stay side by side down to genuine phone widths, and
+   have each fill the shell's height with its own internal scroll. */
 #main-row {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
     flex-wrap: nowrap !important;
 }
+#script-column, #output-column {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+}
 @media (max-width: 640px) {
+    html, body, .gradio-container {
+        height: auto !important;
+        overflow: auto !important;
+    }
     #main-row {
         flex-wrap: wrap !important;
+        height: auto !important;
+    }
+    #script-column, #output-column {
+        height: auto !important;
+        overflow: visible !important;
     }
 }
 
@@ -422,7 +460,7 @@ def build_app(
         # params) lives in one collapsed Advanced settings accordion so the
         # default view stays to four things.
         with gr.Row(equal_height=False, elem_id="main-row"):
-            with gr.Column(scale=3, min_width=280):
+            with gr.Column(scale=3, min_width=280, elem_id="script-column"):
                 with gr.Group(elem_classes=["fish-card"]):
                     gr.Markdown("### 📝 Script", elem_classes=["section-heading"])
                     text_input = gr.Textbox(
@@ -528,7 +566,7 @@ def build_app(
                             precision=0,
                         )
 
-            with gr.Column(scale=2, min_width=240):
+            with gr.Column(scale=2, min_width=240, elem_id="output-column"):
                 with gr.Group(elem_classes=["fish-card"]):
                     gr.Markdown("### 🔊 Output", elem_classes=["section-heading"])
                     error_out = gr.HTML(label=i18n("Error Message"), value="", elem_id="error-box")
