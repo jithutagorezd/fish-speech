@@ -19,9 +19,8 @@ from webui_v2.utils import count_words
 HEADER_HTML = """
 <div class="fish-header">
   <div class="fish-header-row">
-    <div class="fish-logo">🐟</div>
     <div>
-      <div class="fish-title">Audi<span class="fish-title-accent">fyz</span></div>
+      <div class="fish-title">Audifyz <span class="fish-title-accent">Voice Cloner</span></div>
       <div class="fish-subtitle">Studio-grade voice cloning &amp; long-form narration</div>
     </div>
     <div class="fish-steps">
@@ -116,7 +115,7 @@ EMOTION_TAG_INSERT_JS = """
 """
 
 FOOTER_HTML = """
-<div class="fish-footer">🐟 <b>Audifyz</b> — powered by Fish Speech S2</div>
+<div class="fish-footer"><b>Audifyz</b> — clone any voice</div>
 """
 
 CUSTOM_CSS = """
@@ -213,11 +212,6 @@ html, body {
     display: flex;
     align-items: center;
     gap: 12px;
-}
-.fish-logo {
-    font-size: 1.7rem;
-    line-height: 1;
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
 }
 .fish-title {
     font-size: 1.2rem;
@@ -610,7 +604,7 @@ def build_app(
         return audio, err or ""
 
     with gr.Blocks(
-        title="Audifyz — Voice Cloning Studio",
+        title="Audifyz Voice Cloner",
         theme=FISH_THEME,
         css=CUSTOM_CSS,
     ) as app:
