@@ -356,6 +356,19 @@ html, body {
 #voice-source-row {
     gap: 12px;
 }
+/* Flex items default to min-width:auto, which refuses to shrink below
+   the content's natural width — with a real audio waveform inside a
+   narrow card, that fights the flex algorithm for space on every
+   re-render and looks like the widget "adjusting"/jittering
+   horizontally. Forcing an explicit equal flex-basis + min-width:0
+   settles both cards to a fixed share regardless of their content. */
+#voice-source-row > .fish-card {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+}
+#mic-audio, #upload-audio {
+    min-width: 0 !important;
+}
 
 /* ---- Buttons: bigger and more tactile everywhere ---- */
 .gradio-container button {
