@@ -9,6 +9,7 @@ import gradio as gr
 from fish_speech.i18n import i18n
 
 from webui_v2.inference import (
+    build_html_error_message,
     get_inference_long_form_wrapper,
     get_inference_single_wrapper,
     get_whisper_transcribe_wrapper,
@@ -978,37 +979,50 @@ def build_app(
             mode_radio,
             progress=gr.Progress(),
         ):
-            reference_audio = _resolve_reference_audio(mic_path, upload_path, source)
-            if mode_radio == "Long-form (chunked)":
-                audio, err = run_long_form(
-                    text,
-                    reference_id,
-                    reference_audio,
-                    reference_text,
-                    max_new_tokens,
-                    chunk_length,
-                    top_p,
-                    repetition_penalty,
-                    temperature,
-                    seed,
-                    use_memory_cache,
-                    max_words_per_chunk,
-                    progress,
-                )
-            else:
-                audio, err = run_single(
-                    text,
-                    reference_id,
-                    reference_audio,
-                    reference_text,
-                    max_new_tokens,
-                    chunk_length,
-                    top_p,
-                    repetition_penalty,
-                    temperature,
-                    seed,
-                    use_memory_cache,
-                )
+            # Belt-and-suspenders: run_single/run_long_form already turn known
+            # failure modes into a friendly (None, error_html) pair, but this
+            # is the actual Gradio-facing function in the .click().then()
+            # chain below — if *anything* unforeseen raises here instead of
+            # returning normally, that chain aborts and its final .then()
+            # step (which resets the Generate button back to idle) never
+            # runs, leaving the button permanently stuck on "Generating…".
+            # Catching broadly here is the one place that guarantees the
+            # button always comes back, regardless of what specifically
+            # went wrong deeper in the stack.
+            try:
+                reference_audio = _resolve_reference_audio(mic_path, upload_path, source)
+                if mode_radio == "Long-form (chunked)":
+                    audio, err = run_long_form(
+                        text,
+                        reference_id,
+                        reference_audio,
+                        reference_text,
+                        max_new_tokens,
+                        chunk_length,
+                        top_p,
+                        repetition_penalty,
+                        temperature,
+                        seed,
+                        use_memory_cache,
+                        max_words_per_chunk,
+                        progress,
+                    )
+                else:
+                    audio, err = run_single(
+                        text,
+                        reference_id,
+                        reference_audio,
+                        reference_text,
+                        max_new_tokens,
+                        chunk_length,
+                        top_p,
+                        repetition_penalty,
+                        temperature,
+                        seed,
+                        use_memory_cache,
+                    )
+            except Exception as e:
+                audio, err = None, build_html_error_message(e)
             # Third output clears the "will appear here" placeholder — once a
             # generation has run (success or error), it's no longer useful.
             return audio, err, ""

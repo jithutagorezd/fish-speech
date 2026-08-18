@@ -8,6 +8,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import gradio as gr
 import numpy as np
+import soundfile
 
 from fish_speech.i18n import i18n
 from fish_speech.utils.schema import ServeReferenceAudio, ServeTTSRequest
@@ -30,12 +31,32 @@ def build_html_error_message(error: Any) -> str:
 
 def _run_single_inference(engine, req: ServeTTSRequest) -> Tuple[Optional[Tuple[int, np.ndarray]], Optional[str]]:
     """Run one TTS request; return (sample_rate, audio_array) or (None, error_html)."""
-    for result in engine.inference(req):
-        if result.code == "final":
-            return result.audio, None
-        if result.code == "error":
-            return None, build_html_error_message(i18n(result.error))
-    return None, i18n("No audio generated")
+    # engine.inference() decodes the reference audio (torchaudio.load, via the
+    # soundfile backend) before its generator ever yields — an unreadable
+    # upload (wrong/unsupported format, e.g. webm/m4a when the ffmpeg backend
+    # isn't available server-side) raises synchronously here rather than
+    # coming back as a result.code=="error" like other failures. Uncaught,
+    # that exception used to propagate straight up through dispatch() in
+    # app.py and abort the Gradio .then() chain mid-way — which is why the
+    # Generate button got stuck showing "Generating…" forever instead of
+    # ever reaching the step that resets it. Catching it here and returning
+    # the normal (None, error_html) shape keeps that chain intact.
+    try:
+        for result in engine.inference(req):
+            if result.code == "final":
+                return result.audio, None
+            if result.code == "error":
+                return None, build_html_error_message(i18n(result.error))
+        return None, i18n("No audio generated")
+    except soundfile.LibsndfileError:
+        return None, build_html_error_message(
+            RuntimeError(
+                "Couldn't read the reference audio — its format isn't supported. "
+                "Try uploading a WAV or MP3 file instead."
+            )
+        )
+    except Exception as e:
+        return None, build_html_error_message(e)
 
 
 def inference_single(
