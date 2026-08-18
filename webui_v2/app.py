@@ -151,15 +151,19 @@ CUSTOM_CSS = """
 }
 
 /* ---- Page shell ----
-   Pin the whole app to exactly one viewport: no page-level scrolling,
-   nothing growing/shrinking the document as content changes. The two
-   side columns each fill the shell's height and scroll internally
-   instead, so opening the Advanced accordion (etc.) can't resize the
-   page itself. */
+   The page scrolls naturally, like a normal document — no forced single-
+   viewport height, no per-column internal scrolling. That tidy-looking
+   "pin everything to 100dvh, let each column scroll internally" approach
+   fell apart in practice: the Generate-speech column genuinely holds more
+   content than the Voice-input column (textbox, tags, button, advanced
+   settings, output player), so forcing both into the same fixed height
+   just crushed the taller one — clipped text, a barely-visible Advanced
+   Settings section, a collapsed-looking output card, and its own inner
+   scrollbar stacked on top of the browser's outer one. Letting each
+   column size to its own content and scrolling the whole page instead
+   removes all of that in one move. */
 html, body {
-    height: 100% !important;
     margin: 0 !important;
-    overflow: hidden !important;
     background: var(--bg) !important;
 }
 .gradio-container {
@@ -168,10 +172,7 @@ html, body {
     margin: 0 !important;
     padding-left: 28px !important;
     padding-right: 28px !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    overflow: hidden !important;
+    padding-bottom: 24px !important;
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
@@ -213,64 +214,27 @@ html, body {
 }
 
 /* ---- Main layout ----
-   Flex items default to min-height:auto, which refuses to shrink below
-   the content's natural height regardless of how much space the flex
-   parent actually offers. Gradio's own internal wrappers between
-   .gradio-container and #main-row (an auto-generated <main class=
-   "contain"> and an auto-generated wrapper <div class="column">, neither
-   of which we create or can elem_id) hit exactly this: verified live
-   that <main> was rendering at 1147px tall inside a 688px-tall parent,
-   dragging #main-row and every column below it up to match — so nothing
-   was ever actually clipped/scrolling, the whole shell just silently
-   grew past the viewport and pushed the output card below the fold with
-   no way to reach it. Forcing min-height:0 on Gradio's own wrapper
-   classes lets the intended shrink-and-scroll-internally design actually
-   take effect.
-
-   IMPORTANT: this must stay scoped with :has(#main-row) — .row/.column
-   are Gradio's generic layout classes used all over the page (including
-   around the textbox itself), so an unscoped `.column, .row { min-height:
-   0 }` collapses unrelated rows/columns elsewhere (this shipped once and
-   broke the text input entirely). Only the specific ancestor chain above
-   #main-row should be forced to min-height:0. */
-main.contain:has(#main-row),
-.column:has(#main-row) {
-    min-height: 0 !important;
-}
-
-/* Gradio wraps a Row's columns into a stacked, single-column layout
+   Gradio wraps a Row's columns into a stacked, single-column layout
    whenever they can't fit side by side at their min_width, which reads
    as a tall "mobile" page even on a desktop-width window. Force the two
-   main columns to stay side by side down to genuine phone widths, and
-   have each fill the shell's height with its own internal scroll. */
+   main columns to stay side by side down to genuine phone widths — each
+   one now just grows to its own natural content height (see the page
+   shell comment above), so the shorter Voice-input column ends where its
+   content ends instead of being stretched to match the taller one.
+
+   flex-wrap:nowrap is also set on the columns themselves, not just the
+   row: a flex-direction:column container that runs out of vertical room
+   doesn't clip an overflowing child, it wraps it into a second column
+   positioned off to the side instead (this genuinely happened once, when
+   these columns still had a fixed height — a child taller than the
+   column landed a full column-width to the right, needing a horizontal
+   scrollbar to ever reach). Harmless to keep as insurance even without a
+   height constraint forcing the issue. */
 #main-row {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
     flex-wrap: nowrap !important;
 }
 #voice-column, #studio-column {
-    height: 100% !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    /* Gradio's own column wrapper defaults to flex-wrap: wrap. That's meant
-       for responsive reflow (see #main-row above), but on a *vertical*
-       flex-direction:column container it means something else entirely:
-       once a child (here, the whole .fish-card holding the textbox, tags,
-       button, etc.) is taller than the column's own fixed height, flexbox
-       doesn't let it overflow-scroll — it wraps it into a brand new column
-       positioned to the right, off-screen. Verified live: the card was
-       rendering at the correct width but shifted left+880px, i.e. exactly
-       one column-width away, with the column stuck needing a horizontal
-       scrollbar to ever reach it. Forcing nowrap keeps every child in the
-       single intended column so overflow-y:auto can actually do its job. */
     flex-wrap: nowrap !important;
-    /* On Windows Chrome, non-overlay scrollbars take up real width. If a
-       column's content height hovers right at the "needs a scrollbar"
-       threshold (e.g. right when the upload widget loads and grows),
-       the scrollbar can flicker in and out, shifting everything
-       horizontally each time — reads as the widget "shaking left and
-       right". Always reserving the gutter stops it from toggling. */
-    scrollbar-gutter: stable !important;
 }
 /* Clear visual separation between the input (left) and output (right)
    zones. */
@@ -279,17 +243,8 @@ main.contain:has(#main-row),
     padding-left: 24px;
 }
 @media (max-width: 640px) {
-    html, body, .gradio-container {
-        height: auto !important;
-        overflow: auto !important;
-    }
     #main-row {
         flex-wrap: wrap !important;
-        height: auto !important;
-    }
-    #voice-column, #studio-column {
-        height: auto !important;
-        overflow: visible !important;
     }
     #studio-column {
         border-left: none;
