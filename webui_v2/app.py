@@ -225,8 +225,16 @@ html, body {
    grew past the viewport and pushed the output card below the fold with
    no way to reach it. Forcing min-height:0 on Gradio's own wrapper
    classes lets the intended shrink-and-scroll-internally design actually
-   take effect. */
-main, .contain, .column, .row {
+   take effect.
+
+   IMPORTANT: this must stay scoped with :has(#main-row) — .row/.column
+   are Gradio's generic layout classes used all over the page (including
+   around the textbox itself), so an unscoped `.column, .row { min-height:
+   0 }` collapses unrelated rows/columns elsewhere (this shipped once and
+   broke the text input entirely). Only the specific ancestor chain above
+   #main-row should be forced to min-height:0. */
+main.contain:has(#main-row),
+.column:has(#main-row) {
     min-height: 0 !important;
 }
 
