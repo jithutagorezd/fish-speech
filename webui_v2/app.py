@@ -252,6 +252,18 @@ main.contain:has(#main-row),
     height: 100% !important;
     min-height: 0 !important;
     overflow-y: auto !important;
+    /* Gradio's own column wrapper defaults to flex-wrap: wrap. That's meant
+       for responsive reflow (see #main-row above), but on a *vertical*
+       flex-direction:column container it means something else entirely:
+       once a child (here, the whole .fish-card holding the textbox, tags,
+       button, etc.) is taller than the column's own fixed height, flexbox
+       doesn't let it overflow-scroll — it wraps it into a brand new column
+       positioned to the right, off-screen. Verified live: the card was
+       rendering at the correct width but shifted left+880px, i.e. exactly
+       one column-width away, with the column stuck needing a horizontal
+       scrollbar to ever reach it. Forcing nowrap keeps every child in the
+       single intended column so overflow-y:auto can actually do its job. */
+    flex-wrap: nowrap !important;
     /* On Windows Chrome, non-overlay scrollbars take up real width. If a
        column's content height hovers right at the "needs a scrollbar"
        threshold (e.g. right when the upload widget loads and grows),
