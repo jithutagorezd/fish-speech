@@ -2,6 +2,7 @@
 Fish Speech WebUI v2 — rich interface with long-form TTS support.
 """
 
+import os
 from typing import Optional
 
 import gradio as gr
@@ -15,6 +16,23 @@ from webui_v2.inference import (
     get_whisper_transcribe_wrapper,
 )
 from webui_v2.utils import count_words
+
+# Preset "pick a ready-made voice" cards. Each id must match a folder under
+# references/<id>/ containing at least one audio file + matching .lab
+# transcript (fish_speech.inference_engine.reference_loader.ReferenceLoader
+# reads that folder structure directly — see load_by_id/list_reference_ids).
+# reference_id already flows straight through dispatch() -> run_single /
+# run_long_form -> ServeTTSRequest, and the engine prefers reference_id over
+# any uploaded reference_audio, so selecting a preset needs no changes on
+# the inference side at all.
+PRESET_VOICES = [
+    ("Amelia Taylor — Female", "Amelia Taylor"),
+    ("John Taylor — Male", "John Taylor"),
+    ("Ava Thompson — Female", "Ava Thompson"),
+]
+PRESET_PREVIEW_PATHS = {
+    ref_id: os.path.join("references", ref_id, "sample.mp3") for _, ref_id in PRESET_VOICES
+}
 
 HEADER_HTML = """
 <div class="fish-header">
@@ -604,11 +622,16 @@ html, body {
    CSS transition. */
 #audio-output, #audio-output *,
 #mic-audio, #mic-audio *,
-#upload-audio, #upload-audio * {
+#upload-audio, #upload-audio *,
+#preset-preview-audio, #preset-preview-audio * {
     transition: none !important;
 }
 #mic-audio, #upload-audio {
     height: 180px;
+}
+#preset-preview-audio {
+    height: 120px;
+    margin-top: 8px;
 }
 
 /* Empty-state message shown until the first generation completes, so the
@@ -690,10 +713,14 @@ def _word_count_display(text: Optional[str]) -> str:
     return html
 
 
-def _voice_status_display(reference_audio_path: Optional[str]) -> str:
-    if not reference_audio_path:
-        return '<span class="voice-status voice-status-none">⚠️ No voice selected — record or upload one</span>'
-    return '<span class="voice-status voice-status-active">🎙️ Using: Your voice</span>'
+def _voice_status_display(
+    source: str, preset_id: Optional[str], reference_audio_path: Optional[str]
+) -> str:
+    if source == "preset" and preset_id:
+        return f'<span class="voice-status voice-status-active">🎭 Using preset voice: {preset_id}</span>'
+    if reference_audio_path:
+        return '<span class="voice-status voice-status-active">🎙️ Using: Your voice</span>'
+    return '<span class="voice-status voice-status-none">⚠️ No voice selected — record, upload, or pick a preset</span>'
 
 
 def _resolve_reference_audio(
@@ -809,8 +836,9 @@ def build_app(
                     elem_classes=["column-heading"],
                 )
                 gr.Markdown(
-                    "Record or upload a short voice sample — whatever you type "
-                    "on the right will be spoken in that voice.",
+                    "Record or upload a short voice sample, or pick a ready-made "
+                    "voice below — whatever you type on the right will be spoken "
+                    "in that voice.",
                     elem_classes=["voice-hint"],
                 )
                 with gr.Row(elem_id="voice-source-row"):
@@ -830,6 +858,20 @@ def build_app(
                             sources=["upload"],
                             elem_id="upload-audio",
                         )
+                with gr.Group(elem_classes=["fish-card"], elem_id="preset-voice-card"):
+                    gr.Markdown("### 🎭 Or Pick a Preset Voice", elem_classes=["section-heading"])
+                    preset_radio = gr.Radio(
+                        show_label=False,
+                        choices=[("— None, use recording/upload above —", "")] + PRESET_VOICES,
+                        value="",
+                    )
+                    preset_preview = gr.Audio(
+                        show_label=False,
+                        type="filepath",
+                        interactive=False,
+                        visible=False,
+                        elem_id="preset-preview-audio",
+                    )
                 active_source = gr.State("mic")
 
             with gr.Column(scale=1, min_width=320, elem_id="studio-column"):
@@ -856,7 +898,7 @@ def build_app(
                     gr.HTML(EMOTION_TAGS_HTML)
 
                     voice_status = gr.HTML(
-                        _voice_status_display(None),
+                        _voice_status_display("mic", "", None),
                         elem_id="voice-status",
                     )
 
@@ -884,7 +926,7 @@ def build_app(
                         )
                         reference_id = gr.Textbox(
                             label=i18n("Reference ID"),
-                            placeholder="Leave empty to use the reference audio above",
+                            placeholder="Auto-filled when you pick a preset voice, or leave empty to use the reference audio above",
                             value="",
                         )
                         transcribe_btn = gr.Button(
@@ -1077,35 +1119,107 @@ def build_app(
             outputs=[reference_text],
         )
 
-        # Mic and upload are mutually exclusive — recording something clears
-        # any uploaded file and vice versa, so at most one is ever populated.
-        # Without this, both widgets could hold content at once with no
-        # visible signal of which one would actually be used at generate
-        # time. Each handler only clears the *other* widget when it just
-        # received real content (a truthy new value); if it was cleared
-        # instead, it leaves the other widget alone and simply falls back
-        # to whichever one still has something.
-        def _on_mic_change(mic_path, upload_path):
+        # Mic, upload, and preset are mutually exclusive — using one clears
+        # the other two, so at most one voice source is ever active. Without
+        # this, several widgets could hold content at once with no visible
+        # signal of which one would actually be used at generate time. Each
+        # handler only clears the *others* when it just received real
+        # content (a truthy new value); if it was cleared instead, it leaves
+        # the others alone and falls back to whichever one still has
+        # something (mic > upload > preset, an arbitrary but fixed order).
+        # Clearing preset_radio/reference_id here also re-triggers
+        # preset_radio.change below — harmless, since by then mic_audio/
+        # upload_audio already hold their new values and _on_preset_change
+        # re-derives the same fallback source from them.
+        def _on_mic_change(mic_path, upload_path, preset_id):
             if mic_path:
-                return gr.update(value=None), "mic", _voice_status_display(mic_path)
-            source = "upload" if upload_path else "mic"
-            return gr.update(), source, _voice_status_display(upload_path)
-
-        def _on_upload_change(mic_path, upload_path):
+                return (
+                    gr.update(value=None),
+                    gr.update(value=""),
+                    "mic",
+                    "",
+                    _voice_status_display("mic", "", mic_path),
+                    gr.update(value=None, visible=False),
+                )
             if upload_path:
-                return gr.update(value=None), "upload", _voice_status_display(upload_path)
-            source = "mic" if mic_path else "upload"
-            return gr.update(), source, _voice_status_display(mic_path)
+                source = "upload"
+            elif preset_id:
+                source = "preset"
+            else:
+                source = "mic"
+            return (
+                gr.update(),
+                gr.update(),
+                source,
+                preset_id if source == "preset" else "",
+                _voice_status_display(source, preset_id, upload_path),
+                gr.update(),
+            )
+
+        def _on_upload_change(mic_path, upload_path, preset_id):
+            if upload_path:
+                return (
+                    gr.update(value=None),
+                    gr.update(value=""),
+                    "upload",
+                    "",
+                    _voice_status_display("upload", "", upload_path),
+                    gr.update(value=None, visible=False),
+                )
+            if mic_path:
+                source = "mic"
+            elif preset_id:
+                source = "preset"
+            else:
+                source = "upload"
+            return (
+                gr.update(),
+                gr.update(),
+                source,
+                preset_id if source == "preset" else "",
+                _voice_status_display(source, preset_id, mic_path),
+                gr.update(),
+            )
+
+        def _on_preset_change(preset_id, mic_path, upload_path):
+            if preset_id:
+                return (
+                    gr.update(value=None),
+                    gr.update(value=None),
+                    "preset",
+                    preset_id,
+                    _voice_status_display("preset", preset_id, None),
+                    gr.update(value=PRESET_PREVIEW_PATHS.get(preset_id), visible=True),
+                )
+            if mic_path:
+                source = "mic"
+            elif upload_path:
+                source = "upload"
+            else:
+                source = "mic"
+            return (
+                gr.update(),
+                gr.update(),
+                source,
+                "",
+                _voice_status_display(source, "", mic_path or upload_path),
+                gr.update(value=None, visible=False),
+            )
 
         mic_audio.change(
             fn=_on_mic_change,
-            inputs=[mic_audio, upload_audio],
-            outputs=[upload_audio, active_source, voice_status],
+            inputs=[mic_audio, upload_audio, preset_radio],
+            outputs=[upload_audio, preset_radio, active_source, reference_id, voice_status, preset_preview],
         )
         upload_audio.change(
             fn=_on_upload_change,
-            inputs=[mic_audio, upload_audio],
-            outputs=[mic_audio, active_source, voice_status],
+            inputs=[mic_audio, upload_audio, preset_radio],
+            outputs=[mic_audio, preset_radio, active_source, reference_id, voice_status, preset_preview],
+        )
+        preset_radio.change(
+            fn=_on_preset_change,
+            inputs=[preset_radio, mic_audio, upload_audio],
+            outputs=[mic_audio, upload_audio, active_source, reference_id, voice_status, preset_preview],
         )
 
         gr.HTML(FOOTER_HTML)

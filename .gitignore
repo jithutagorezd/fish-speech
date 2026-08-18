@@ -65,7 +65,9 @@ venv.bak/
 data/
 results/
 checkpoints/
-references/
+# references/* (not references/) so git still traverses the directory and
+# the preset-voice negation rules below can re-include specific subfolders.
+references/*
 demo-audios/
 example/
 filelists/
@@ -116,3 +118,15 @@ ffprobe.exe
 # ----------
 /*.test.sh
 asr-label*
+
+# Preset voices (webui_v2 "pick a ready-made voice" picker)
+# -----------------------------------------------------------
+# references/ is otherwise runtime data (see above), and *.mp3/*.lab are
+# ignored globally (see Audio/Data Files above) — override both for these
+# specific, checked-in preset folders only.
+!references/Amelia Taylor/
+!references/Amelia Taylor/**
+!references/John Taylor/
+!references/John Taylor/**
+!references/Ava Thompson/
+!references/Ava Thompson/**
