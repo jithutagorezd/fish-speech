@@ -581,25 +581,28 @@ html, body {
 /* ---- Output panel ---- */
 #audio-output {
     border-radius: 12px !important;
-    min-height: 90px;
+    height: 180px;
     background: var(--panel) !important;
 }
-/* Gradio's audio player animates its own height/opacity while it switches
-   between empty / loading / loaded states. Combined with autoplay kicking
-   in immediately (and its timeupdate polling for the progress bar), that
-   animation plus the waveform's ResizeObserver still settling reads as
-   the whole card "shaking" in Chrome. Reserving a fixed height means
-   there's no size jump to animate, and killing the transition makes any
-   remaining state change instant instead of visibly animated. The mic
-   and upload widgets go through the same empty -> loaded transition
-   (recording finishes / a file lands) so they get the same treatment. */
+/* Gradio (Svelte) runs a FLIP-style resize animation on its own .block
+   wrapper via the Web Animations API whenever a tracked element's box
+   changes size between renders — visible as --start-top/--start-left/
+   --start-width/--start-height custom properties it sets on itself.
+   That's a JS/WAAPI animation, not a CSS transition, so `transition:
+   none` alone doesn't touch it. FLIP only has something to animate when
+   there's a size delta between the old and new box, so the real fix is
+   giving these widgets a genuinely fixed height (not min-height, which
+   still lets them grow when a recording/upload/result loads) — with no
+   delta, there's nothing left for it to animate. transition: none stays
+   too, as a no-cost second line of defense for anything that IS a plain
+   CSS transition. */
 #audio-output, #audio-output *,
 #mic-audio, #mic-audio *,
 #upload-audio, #upload-audio * {
     transition: none !important;
 }
 #mic-audio, #upload-audio {
-    min-height: 90px;
+    height: 180px;
 }
 
 /* Empty-state message shown until the first generation completes, so the
