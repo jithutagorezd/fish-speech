@@ -213,7 +213,24 @@ html, body {
 }
 
 /* ---- Main layout ----
-   Gradio wraps a Row's columns into a stacked, single-column layout
+   Flex items default to min-height:auto, which refuses to shrink below
+   the content's natural height regardless of how much space the flex
+   parent actually offers. Gradio's own internal wrappers between
+   .gradio-container and #main-row (an auto-generated <main class=
+   "contain"> and an auto-generated wrapper <div class="column">, neither
+   of which we create or can elem_id) hit exactly this: verified live
+   that <main> was rendering at 1147px tall inside a 688px-tall parent,
+   dragging #main-row and every column below it up to match — so nothing
+   was ever actually clipped/scrolling, the whole shell just silently
+   grew past the viewport and pushed the output card below the fold with
+   no way to reach it. Forcing min-height:0 on Gradio's own wrapper
+   classes lets the intended shrink-and-scroll-internally design actually
+   take effect. */
+main, .contain, .column, .row {
+    min-height: 0 !important;
+}
+
+/* Gradio wraps a Row's columns into a stacked, single-column layout
    whenever they can't fit side by side at their min_width, which reads
    as a tall "mobile" page even on a desktop-width window. Force the two
    main columns to stay side by side down to genuine phone widths, and
@@ -545,13 +562,12 @@ html, body {
 }
 
 /* ---- Generate button ----
-   Sticky to the bottom of its scrolling column so it stays reachable
-   even when Advanced settings (below it) is expanded and the column
-   scrolls — the primary action should never require hunting for it. */
+   Deliberately NOT sticky: Advanced settings and the "Generated Speech"
+   card both come after it in the column, and a sticky element pins on
+   top of whatever scrolls underneath it — with an opaque background and
+   z-index, that meant it could visually cover the output card once you
+   scrolled past it, which read as "I can't see the generated audio". */
 #generate-btn {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
     font-size: 1rem !important;
     font-weight: 700 !important;
     height: 52px !important;
