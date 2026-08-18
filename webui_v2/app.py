@@ -349,17 +349,31 @@ html, body {
     gap: 12px;
 }
 /* Flex items default to min-width:auto, which refuses to shrink below
-   the content's natural width — with a real audio waveform inside a
-   narrow card, that fights the flex algorithm for space on every
-   re-render and looks like the widget "adjusting"/jittering
-   horizontally. Forcing an explicit equal flex-basis + min-width:0
-   settles both cards to a fixed share regardless of their content. */
+   the content's natural width. An empty upload dropzone is narrow, but
+   the loaded audio player (waveform canvas + play/download/share/trim
+   controls) is intrinsically much wider — without min-width:0 that
+   swap drags the whole #voice-source-row wider, which reflows #main-row
+   and visibly shifts the Generate-speech column left/right. min-width:0
+   on just the outer wrapper isn't enough on its own, since a deeply
+   nested descendant (the controls row, the waveform canvas) can still
+   carry its own content-based min-width floor that bubbles back up —
+   so it's forced to 0 on every descendant too, and overflow:hidden is
+   the hard backstop: nothing inside can ever push past the card's own
+   width no matter what Gradio's internal player renders at. */
 #voice-source-row > .fish-card {
     flex: 1 1 0% !important;
     min-width: 0 !important;
+    overflow: hidden !important;
 }
 #mic-audio, #upload-audio {
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
+    overflow: hidden !important;
+}
+#mic-audio *, #upload-audio * {
+    min-width: 0 !important;
+    max-width: 100% !important;
 }
 
 /* ---- Buttons: bigger and more tactile everywhere ---- */
