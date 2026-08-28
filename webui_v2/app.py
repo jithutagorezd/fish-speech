@@ -49,14 +49,7 @@ def _update_auto_tag_btn(text):
 # run_long_form -> ServeTTSRequest, and the engine prefers reference_id over
 # any uploaded reference_audio, so selecting a preset needs no changes on
 # the inference side at all.
-PRESET_VOICES = [
-    ("Amelia Taylor — Female", "Amelia Taylor"),
-    ("John Taylor — Male", "John Taylor"),
-    ("Ava Thompson — Female", "Ava Thompson"),
-]
-PRESET_PREVIEW_PATHS = {
-    ref_id: os.path.join("references", ref_id, "sample.mp3") for _, ref_id in PRESET_VOICES
-}
+# Removed PRESET_VOICES as Author dropdown now dynamically reads from reference_audio
 
 HEADER_HTML = """
 <div style="margin-bottom: 28px;">
@@ -641,36 +634,25 @@ def build_app(
             max_words_per_chunk=max_words_per_chunk,
             progress=lambda frac, msg: progress(frac, msg),
         )
-        return audio, err or ""
-
     import os
     ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     REF_AUDIO_DIR = os.path.join(ROOT_DIR, "reference_audio")
     
-    EMOTION_CHOICES = [("— None —", ""), ("— Auto from text —", "auto")]
-    AUTO_DEFAULT_SPEAKER = "hanna"
+    AUTHOR_EMOTIONS = {}
     
     if os.path.isdir(REF_AUDIO_DIR):
         subfolders = [f for f in os.listdir(REF_AUDIO_DIR) if os.path.isdir(os.path.join(REF_AUDIO_DIR, f))]
-        if subfolders:
-            if "hanna" in subfolders:
-                AUTO_DEFAULT_SPEAKER = "hanna"
-            else:
-                AUTO_DEFAULT_SPEAKER = subfolders[0]
+        for speaker in subfolders:
+            speaker_dir = os.path.join(REF_AUDIO_DIR, speaker)
+            emotions = []
+            for file in os.listdir(speaker_dir):
+                if file.endswith((".mp3", ".wav", ".flac", ".ogg", ".m4a")):
+                    emotion = os.path.splitext(file)[0]
+                    emotions.append((emotion.capitalize(), os.path.join(speaker_dir, file)))
+            emotions.sort(key=lambda x: x[0])
+            if emotions:
+                AUTHOR_EMOTIONS[speaker] = emotions
                 
-            dynamic_choices = []
-            for speaker in subfolders:
-                speaker_dir = os.path.join(REF_AUDIO_DIR, speaker)
-                for file in os.listdir(speaker_dir):
-                    if file.endswith((".mp3", ".wav", ".flac", ".ogg", ".m4a")):
-                        emotion = os.path.splitext(file)[0]
-                        name = f"{speaker.capitalize()} - {emotion.capitalize()}"
-                        dynamic_choices.append((name, os.path.join(speaker_dir, file)))
-            
-            # Sort by speaker and emotion alphabetically
-            dynamic_choices.sort(key=lambda x: x[0])
-            EMOTION_CHOICES.extend(dynamic_choices)
-
     with gr.Blocks(
         title="Audifyz Voice Cloner",
         theme=FISH_THEME,
@@ -736,9 +718,10 @@ def build_app(
             with gr.Row(elem_id="voice-dropdown-row"):
                 with gr.Column(scale=1):
                     gr.Markdown("<label style='font-size:12.5px;font-weight:500;color:var(--muted-c);margin-bottom:8px;display:block'>Author</label>")
+                    author_choices = [("— None —", "")] + [(k.capitalize(), k) for k in sorted(AUTHOR_EMOTIONS.keys())]
                     preset_radio = gr.Dropdown(
                         show_label=False,
-                        choices=[("— None —", "")] + PRESET_VOICES,
+                        choices=author_choices,
                         value="",
                         container=False,
                     )
@@ -746,7 +729,7 @@ def build_app(
                     gr.Markdown("<label style='font-size:12.5px;font-weight:500;color:var(--muted-c);margin-bottom:8px;display:block'>Emotion</label>")
                     hanna_radio = gr.Dropdown(
                         show_label=False,
-                        choices=EMOTION_CHOICES,
+                        choices=[("— None —", ""), ("— Auto from text —", "auto")],
                         value="",
                         container=False,
                     )
@@ -918,32 +901,47 @@ def build_app(
                     if hanna_emotion == "auto":
                         detected = detect_emotion(text)
                         
-                        # Try exact match first
-                        auto_path = os.path.join(REF_AUDIO_DIR, AUTO_DEFAULT_SPEAKER, f"{detected}.mp3")
-                        if not os.path.exists(auto_path):
-                            # Try any extension
-                            found = False
-                            for ext in [".mp3", ".wav", ".flac", ".ogg", ".m4a"]:
-                                test_path = os.path.join(REF_AUDIO_DIR, AUTO_DEFAULT_SPEAKER, f"{detected}{ext}")
-                                if os.path.exists(test_path):
-                                    auto_path = test_path
-                                    found = True
-                                    break
-                            
-                            if not found:
-                                # Try any speaker that has this emotion
-                                fallback = [path for name, path in EMOTION_CHOICES if path and path != "auto" and os.path.splitext(os.path.basename(path))[0].lower() == detected.lower()]
-                                if fallback:
-                                    auto_path = fallback[0]
-                                    
-                        reference_audio = auto_path
+                        # Try exact match first for the selected author
+                        # If no author selected, default to the first one available or 'hanna'
+                        author_for_auto = reference_id
+                        if not author_for_auto:
+                            if "hanna" in AUTHOR_EMOTIONS:
+                                author_for_auto = "hanna"
+                            elif AUTHOR_EMOTIONS:
+                                author_for_auto = list(AUTHOR_EMOTIONS.keys())[0]
+                                
+                        auto_path = ""
+                        if author_for_auto:
+                            auto_path = os.path.join(REF_AUDIO_DIR, author_for_auto, f"{detected}.mp3")
+                            if not os.path.exists(auto_path):
+                                # Try any extension for this author
+                                found = False
+                                for ext in [".mp3", ".wav", ".flac", ".ogg", ".m4a"]:
+                                    test_path = os.path.join(REF_AUDIO_DIR, author_for_auto, f"{detected}{ext}")
+                                    if os.path.exists(test_path):
+                                        auto_path = test_path
+                                        found = True
+                                        break
+                                
+                                if not found:
+                                    # Fallback to ANY emotion file for this author matching the emotion
+                                    author_files = AUTHOR_EMOTIONS.get(author_for_auto, [])
+                                    fallback = [path for name, path in author_files if name.lower() == detected.lower()]
+                                    if fallback:
+                                        auto_path = fallback[0]
+                                        
+                        reference_audio = auto_path if auto_path and os.path.exists(auto_path) else None
                     else:
                         reference_audio = hanna_emotion
+                        
+                # We're using reference_audio directly via the dropdowns, so we don't pass reference_id 
+                # (which used to pull from references/ folder instead of reference_audio/ folder).
+                active_ref_id = None
                         
                 if mode_radio == "Long-form (chunked)":
                     audio, err = run_long_form(
                         text,
-                        reference_id,
+                        active_ref_id,
                         reference_audio,
                         reference_text,
                         max_new_tokens,
@@ -959,7 +957,7 @@ def build_app(
                 else:
                     audio, err = run_single(
                         text,
-                        reference_id,
+                        active_ref_id,
                         reference_audio,
                         reference_text,
                         max_new_tokens,
@@ -1094,15 +1092,18 @@ def build_app(
             )
 
         def _on_preset_change(preset_id, mic_path, upload_path):
+            base_emotions = [("— None —", ""), ("— Auto from text —", "auto")]
             if preset_id:
+                emotions = AUTHOR_EMOTIONS.get(preset_id, [])
+                preview_audio = emotions[0][1] if emotions else None
                 return (
                     gr.update(value=None),
                     gr.update(value=None),
                     "preset",
                     preset_id,
                     _voice_status_display("preset", preset_id, None),
-                    gr.update(value=PRESET_PREVIEW_PATHS.get(preset_id), visible=True),
-                    gr.update(value=""),
+                    gr.update(value=preview_audio, visible=bool(preview_audio)),
+                    gr.update(choices=base_emotions + emotions, value=""),
                 )
             if mic_path:
                 source = "mic"
@@ -1116,8 +1117,8 @@ def build_app(
                 source,
                 preset_id if source == "preset" else "",
                 _voice_status_display(source, preset_id, mic_path),
-                gr.update(),
-                gr.update(),
+                gr.update(value=None, visible=False),
+                gr.update(choices=base_emotions, value=""),
             )
 
         mic_audio.change(
@@ -1133,7 +1134,7 @@ def build_app(
         preset_radio.change(
             fn=_on_preset_change,
             inputs=[preset_radio, mic_audio, upload_audio],
-            outputs=[mic_audio, upload_audio, active_source, reference_id, voice_status, preset_preview],
+            outputs=[mic_audio, upload_audio, active_source, reference_id, voice_status, preset_preview, hanna_radio],
         )
 
         gr.HTML(FOOTER_HTML)
