@@ -2,9 +2,8 @@ import os
 import time
 import re
 import logging
-import requests
-import json
 from dotenv import load_dotenv
+from openai import OpenAI, RateLimitError, APIStatusError, APITimeoutError
 
 load_dotenv()
 
@@ -14,6 +13,12 @@ logger = logging.getLogger(__name__)
 
 if not OPENROUTER_API_KEY:
     logger.warning("OPENROUTER API key not found in environment.")
+
+# OpenRouter client using OpenAI SDK
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+)
 
 EMOTIONS = [
     "angry",
@@ -41,62 +46,73 @@ def call_groq(
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = requests.post(
-                url="https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "nvidia/nemotron-3.5-lightning:free",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": system_prompt
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "reasoning": {"enabled": True},
-                    "max_tokens": max_tokens,
-                    "temperature": 0.3
-                },
-                timeout=30
+            response = client.chat.completions.create(
+                model="poolside/laguna-xs-2.1:free",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                max_tokens=max_tokens,
+                temperature=0.3,
+                extra_body={"reasoning": {"enabled": True}}
             )
 
-            if response.status_code == 429:
-                sleep_time = 2.0
-                retry_after = response.headers.get("retry-after")
-                if retry_after:
-                    try:
-                        sleep_time = float(retry_after)
-                    except ValueError:
-                        pass
-                sleep_time += 0.5
-                logger.warning(f"OpenRouter Rate limit hit. Waiting {sleep_time:.2f} seconds before retry (Attempt {attempt + 1}/{max_retries})")
-                time.sleep(sleep_time)
-                continue
-                
-            response.raise_for_status()
-            
-            data = response.json()
-            message = data['choices'][0]['message']
-            content = message.get('content')
+            content = response.choices[0].message.content
 
             if content:
                 return content.strip()
 
             return ""
 
-        except Exception as e:
+        except RateLimitError as e:
             if attempt < max_retries - 1:
-                logger.warning(f"OpenRouter API error (Attempt {attempt + 1}/{max_retries}): {e}")
-                time.sleep(2.0)
+                # Exponential backoff: 2s, 4s, 8s...
+                sleep_time = 2.0 * (2 ** attempt)
+                
+                headers = getattr(e.response, "headers", {})
+                retry_after = headers.get("retry-after")
+                
+                if retry_after:
+                    try:
+                        # Use the larger of our backoff or their requested wait
+                        sleep_time = max(sleep_time, float(retry_after))
+                    except ValueError:
+                        pass
+                
+                # Add a small buffer to the sleep time
+                sleep_time += 0.5
+                
+                logger.warning(f"OpenRouter Rate limit hit (429). Waiting {sleep_time:.2f} seconds before retry (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(sleep_time)
             else:
-                logger.error(f"OpenRouter API error after {max_retries} attempts: {e}")
+                logger.error(f"OpenRouter API rate limit error after {max_retries} attempts: {e}")
                 return ""
+        except APIStatusError as e:
+            # Handle upstream provider errors (404, 502, 529 etc on OpenRouter)
+            if attempt < max_retries - 1:
+                sleep_time = 2.0 * (2 ** attempt)
+                logger.warning(f"OpenRouter Provider error ({e.status_code}). Waiting {sleep_time:.2f} seconds before retry (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(sleep_time)
+            else:
+                logger.error(f"OpenRouter Provider error ({e.status_code}) after {max_retries} attempts: {e}")
+                return ""
+        except APITimeoutError as e:
+            if attempt < max_retries - 1:
+                sleep_time = 2.0 * (2 ** attempt)
+                logger.warning(f"OpenRouter Timeout. Waiting {sleep_time:.2f} seconds before retry (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(sleep_time)
+            else:
+                logger.error(f"OpenRouter Timeout after {max_retries} attempts: {e}")
+                return ""
+        except Exception as e:
+            logger.error(f"OpenRouter API unknown error: {e}")
+            return ""
 
 
 def auto_tag_text(text: str) -> str:
