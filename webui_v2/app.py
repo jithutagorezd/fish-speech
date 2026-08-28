@@ -643,6 +643,34 @@ def build_app(
         )
         return audio, err or ""
 
+    import os
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    REF_AUDIO_DIR = os.path.join(ROOT_DIR, "reference_audio")
+    
+    EMOTION_CHOICES = [("— None —", ""), ("— Auto from text —", "auto")]
+    AUTO_DEFAULT_SPEAKER = "hanna"
+    
+    if os.path.isdir(REF_AUDIO_DIR):
+        subfolders = [f for f in os.listdir(REF_AUDIO_DIR) if os.path.isdir(os.path.join(REF_AUDIO_DIR, f))]
+        if subfolders:
+            if "hanna" in subfolders:
+                AUTO_DEFAULT_SPEAKER = "hanna"
+            else:
+                AUTO_DEFAULT_SPEAKER = subfolders[0]
+                
+            dynamic_choices = []
+            for speaker in subfolders:
+                speaker_dir = os.path.join(REF_AUDIO_DIR, speaker)
+                for file in os.listdir(speaker_dir):
+                    if file.endswith((".mp3", ".wav", ".flac", ".ogg", ".m4a")):
+                        emotion = os.path.splitext(file)[0]
+                        name = f"{speaker.capitalize()} - {emotion.capitalize()}"
+                        dynamic_choices.append((name, os.path.join(speaker_dir, file)))
+            
+            # Sort by speaker and emotion alphabetically
+            dynamic_choices.sort(key=lambda x: x[0])
+            EMOTION_CHOICES.extend(dynamic_choices)
+
     with gr.Blocks(
         title="Audifyz Voice Cloner",
         theme=FISH_THEME,
@@ -718,7 +746,7 @@ def build_app(
                     gr.Markdown("<label style='font-size:12.5px;font-weight:500;color:var(--muted-c);margin-bottom:8px;display:block'>Emotion</label>")
                     hanna_radio = gr.Dropdown(
                         show_label=False,
-                        choices=[("— None —", ""), ("— Auto from text —", "auto")] + [(e.capitalize(), os.path.abspath(f"reference_audio/hanna/{e.lower()}.mp3")) for e in ["angry", "excited", "fearful", "happy", "romantic", "sad", "serious", "suspenseful", "neutral", "warm"]],
+                        choices=EMOTION_CHOICES,
                         value="",
                         container=False,
                     )
@@ -889,7 +917,26 @@ def build_app(
                 if hanna_emotion:
                     if hanna_emotion == "auto":
                         detected = detect_emotion(text)
-                        reference_audio = os.path.abspath(f"reference_audio/hanna/{detected}.mp3")
+                        
+                        # Try exact match first
+                        auto_path = os.path.join(REF_AUDIO_DIR, AUTO_DEFAULT_SPEAKER, f"{detected}.mp3")
+                        if not os.path.exists(auto_path):
+                            # Try any extension
+                            found = False
+                            for ext in [".mp3", ".wav", ".flac", ".ogg", ".m4a"]:
+                                test_path = os.path.join(REF_AUDIO_DIR, AUTO_DEFAULT_SPEAKER, f"{detected}{ext}")
+                                if os.path.exists(test_path):
+                                    auto_path = test_path
+                                    found = True
+                                    break
+                            
+                            if not found:
+                                # Try any speaker that has this emotion
+                                fallback = [path for name, path in EMOTION_CHOICES if path and path != "auto" and os.path.splitext(os.path.basename(path))[0].lower() == detected.lower()]
+                                if fallback:
+                                    auto_path = fallback[0]
+                                    
+                        reference_audio = auto_path
                     else:
                         reference_audio = hanna_emotion
                         
