@@ -2,22 +2,18 @@ import os
 import time
 import re
 import logging
+import requests
+import json
 from dotenv import load_dotenv
-from groq import Groq, RateLimitError
 
 load_dotenv()
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPEN_ROUTER")
 
 logger = logging.getLogger(__name__)
 
-if not GROQ_API_KEY:
-    logger.warning("GROQ_API_KEY not found in environment.")
-
-# Groq official client
-client = Groq(
-    api_key=GROQ_API_KEY
-)
+if not OPENROUTER_API_KEY:
+    logger.warning("OPENROUTER API key not found in environment.")
 
 EMOTIONS = [
     "angry",
@@ -39,74 +35,68 @@ def call_groq(
     max_tokens: int = 150
 ) -> str:
 
-    if not GROQ_API_KEY:
+    if not OPENROUTER_API_KEY:
         return ""
 
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # Prompt Guard models only accept a single user message and max_tokens <= 512
-            combined_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-            safe_max_tokens = min(max_tokens, 512)
-            
-            response = client.chat.completions.create(
-                model="meta-llama/llama-prompt-guard-2-86m",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": combined_prompt
-                    }
-                ],
-                max_tokens=safe_max_tokens,
-                temperature=0.3
+            response = requests.post(
+                url="https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "nvidia/nemotron-3.5-lightning:free",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": system_prompt
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "reasoning": {"enabled": True},
+                    "max_tokens": max_tokens,
+                    "temperature": 0.3
+                },
+                timeout=30
             )
 
-            content = response.choices[0].message.content
+            if response.status_code == 429:
+                sleep_time = 2.0
+                retry_after = response.headers.get("retry-after")
+                if retry_after:
+                    try:
+                        sleep_time = float(retry_after)
+                    except ValueError:
+                        pass
+                sleep_time += 0.5
+                logger.warning(f"OpenRouter Rate limit hit. Waiting {sleep_time:.2f} seconds before retry (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(sleep_time)
+                continue
+                
+            response.raise_for_status()
+            
+            data = response.json()
+            message = data['choices'][0]['message']
+            content = message.get('content')
 
             if content:
                 return content.strip()
 
             return ""
 
-        except RateLimitError as e:
-            if attempt < max_retries - 1:
-                headers = getattr(e.response, "headers", {})
-                
-                # 1. Try retry-after header
-                retry_after = headers.get("retry-after")
-                sleep_time = 2.0
-                
-                if retry_after:
-                    try:
-                        sleep_time = float(retry_after)
-                    except ValueError:
-                        pass
-                else:
-                    # 2. Try x-ratelimit-reset-tokens or requests (e.g. "7.66s", "2m59.56s")
-                    reset_tokens = headers.get("x-ratelimit-reset-tokens")
-                    reset_requests = headers.get("x-ratelimit-reset-requests")
-                    
-                    reset_str = reset_tokens or reset_requests
-                    if reset_str:
-                        # Extract seconds if it matches pattern like 7.66s
-                        match = re.search(r'([\d\.]+)s$', reset_str)
-                        if match:
-                            try:
-                                sleep_time = float(match.group(1))
-                            except ValueError:
-                                pass
-                
-                # Add a small buffer to the sleep time
-                sleep_time += 0.5
-                
-                logger.warning(f"Groq Rate limit hit. Waiting {sleep_time:.2f} seconds before retry (Attempt {attempt + 1}/{max_retries})")
-                time.sleep(sleep_time)
-            else:
-                logger.error(f"Groq API rate limit error after {max_retries} attempts: {e}")
-                return ""
         except Exception as e:
-            logger.error(f"Groq API error: {e}")
-            return ""
+            if attempt < max_retries - 1:
+                logger.warning(f"OpenRouter API error (Attempt {attempt + 1}/{max_retries}): {e}")
+                time.sleep(2.0)
+            else:
+                logger.error(f"OpenRouter API error after {max_retries} attempts: {e}")
+                return ""
 
 
 def auto_tag_text(text: str) -> str:

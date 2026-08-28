@@ -15,8 +15,31 @@ from webui_v2.inference import (
     get_inference_single_wrapper,
     get_whisper_transcribe_wrapper,
 )
+import re
+
 from webui_v2.utils import count_words
 from webui_v2.groq_llm import auto_tag_text, detect_emotion
+
+def _auto_tag_running():
+    return gr.update(value="⏳ Tagging…", interactive=False)
+
+def _auto_tag_done(text):
+    if not text or not text.strip():
+        return gr.update(), gr.update(value="✨ Auto Tag Text", interactive=True)
+    try:
+        return auto_tag_text(text), gr.update(value="✨ Auto Tag Text", interactive=True)
+    except Exception:
+        return gr.update(), gr.update(value="✨ Auto Tag Text", interactive=True)
+
+def _tags_html(text):
+    found = sorted(set(m.lower().strip() for m in re.findall(r"\[([a-zA-Z ]+)\]", text or "")))
+    if not found:
+        return ""
+    chips = "".join(f'<span class="tag-chip">[{t}]</span>' for t in found)
+    return f'<div class="tag-chip-row">{chips}</div>'
+
+def _update_auto_tag_btn(text):
+    return gr.update(interactive=bool(text and text.strip()))
 
 # Preset "pick a ready-made voice" cards. Each id must match a folder under
 # references/<id>/ containing at least one audio file + matching .lab
@@ -92,7 +115,6 @@ EMOTION_TAG_GROUPS = [
     ("Pacing", ["pause", "short pause", "emphasis", "interrupting"]),
     ("Breath & texture", ["inhale", "exhale", "sigh", "panting", "moaning", "clearing throat", "tsk"]),
     ("Laughter", ["laughing", "chuckle", "chuckling", "laughing tone", "audience laughter"]),
-    ("Emotion", ["excited", "excited tone", "angry", "sad", "delight", "surprised", "shocked"]),
     ("Dynamics", ["volume up", "volume down", "low volume", "loud", "echo", "low voice"]),
 ]
 
@@ -127,7 +149,7 @@ def _build_emotion_tags_html() -> str:
 
 
 def _build_quick_emotion_html() -> str:
-    chips = ['<button type="button" class="emotion-pill emotion-pill-active" data-tag="">Default</button>']
+    chips = ['<button type="button" class="emotion-pill emotion-pill-active" data-tag="">None</button>']
     for tag in QUICK_EMOTION_TAGS:
         chips.append(
             f'<button type="button" class="emotion-pill" data-tag="{tag}">{tag.capitalize()}</button>'
@@ -297,22 +319,47 @@ html, body {
     transition: none !important;
 }
 
+/* Author / Emotion — override Gradio's mobile row-stacking */
+#voice-dropdown-row {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 12px !important;
+}
+#voice-dropdown-row > * {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+}
+/* only stack on genuinely tiny screens */
+@media (max-width: 380px) {
+    #voice-dropdown-row { flex-direction: column !important; }
+}
+
 /* Generate Button */
+#generate-row {
+    display: flex !important;
+    justify-content: center !important;
+    margin-top: 16px !important;
+}
+#generate-row > * {
+    width: auto !important;
+    flex: 0 0 auto !important;
+}
 #generate-btn {
-    font-size: 1rem !important;
-    font-weight: 700 !important;
-    height: 52px !important;
-    width: 100% !important;
-    border-radius: 12px !important;
-    margin-top: 16px;
+    width: auto !important;
+    height: auto !important;
+    font-size: 14.5px !important;
+    font-weight: 600 !important;
+    padding: 13px 28px !important;
+    border-radius: 999px !important;
     background: var(--accent) !important;
     border: none !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 14px rgba(232, 163, 61, .25);
+    color: #171106 !important;
+    box-shadow: 0 8px 24px rgba(232, 163, 61, 0.22) !important;
+    margin-top: 0 !important;
 }
 #generate-btn:hover {
     background: var(--accent-hover) !important;
-    box-shadow: 0 6px 18px rgba(232, 163, 61, .35);
+    box-shadow: 0 10px 28px rgba(232, 163, 61, 0.32) !important;
 }
 
 /* Advanced settings */
@@ -390,11 +437,80 @@ html, body {
 #output-placeholder:empty { display: none; }
 
 .word-badge {
-    display: inline-block;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--muted-c);
-    padding: 2px 4px;
+}
+.longform-nudge {
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-left: 8px;
+}
+.word-count-wrapper {
+    text-align: right;
+    margin-top: -6px;
+    margin-bottom: 12px;
+    padding-right: 8px;
+}
+.auto-tag-row {
+    margin-bottom: 8px;
+}
+.auto-tag-btn {
+    background: rgba(232, 163, 61, 0.12) !important;
+    border: 1px solid rgba(232, 163, 61, 0.35) !important;
+    color: #F3B860 !important;
+    border-radius: 999px !important;
+    font-weight: 600 !important;
+    font-size: 12.5px !important;
+    padding: 8px 14px !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+}
+.auto-tag-btn:hover { background: rgba(232, 163, 61, 0.2) !important; }
+
+.tag-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.tag-chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--panel-2);
+    border: 1px solid var(--border-c);
+    color: var(--accent);
+    padding: 3px 6px;
+    border-radius: 6px;
+}
+
+/* Emotion tag details panel */
+.emotion-tag-details {
+    background: var(--panel-2);
+    border: 1px solid var(--border-c);
+    border-radius: 10px;
+    margin-top: 8px;
+    padding: 0;
+}
+.emotion-tag-details summary {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted-c);
+    font-weight: 500;
+    list-style: none;
+    user-select: none;
+}
+.emotion-tag-details summary::-webkit-details-marker {
+    display: none;
+}
+.emotion-tag-details summary:hover {
+    color: var(--text-c);
+}
+.emotion-tag-groups {
+    padding: 0 14px 14px 14px;
+    border-top: 1px solid var(--border-c);
+    margin-top: 4px;
 }
 """
 
@@ -555,23 +671,35 @@ def build_app(
                     show_label=False,
                     elem_id="script-input",
                 )
-                with gr.Row(elem_classes="word-count-row"):
-                    auto_tag_btn = gr.Button("✨ Auto Tag Text", size="sm", variant="secondary", elem_classes=["auto-tag-btn"])
-                    word_count = gr.HTML(_word_count_display(None))
+                word_count = gr.HTML(_word_count_display(None), elem_classes="word-count-wrapper")
+                
+                with gr.Row(elem_classes="auto-tag-row"):
+                    auto_tag_btn = gr.Button("✨ Auto Tag Text", size="sm", variant="secondary", elem_classes=["auto-tag-btn"], interactive=False)
+                tags_readout = gr.HTML("")
                 
                 gr.HTML(QUICK_EMOTION_HTML)
                 gr.HTML(EMOTION_TAGS_HTML)
 
                 auto_tag_btn.click(
-                    fn=auto_tag_text,
-                    inputs=[text_input],
-                    outputs=[text_input]
+                    fn=_auto_tag_running, inputs=None, outputs=auto_tag_btn,
+                ).then(
+                    fn=_auto_tag_done, inputs=[text_input], outputs=[text_input, auto_tag_btn],
                 )
 
                 text_input.change(
                     fn=_word_count_display,
                     inputs=[text_input],
                     outputs=[word_count],
+                )
+                text_input.change(
+                    fn=_tags_html,
+                    inputs=[text_input],
+                    outputs=[tags_readout],
+                )
+                text_input.change(
+                    fn=_update_auto_tag_btn,
+                    inputs=[text_input],
+                    outputs=[auto_tag_btn],
                 )
 
             # --- STEP 2 ---
