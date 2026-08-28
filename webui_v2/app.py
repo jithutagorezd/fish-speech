@@ -16,6 +16,7 @@ from webui_v2.inference import (
     get_whisper_transcribe_wrapper,
 )
 from webui_v2.utils import count_words
+from webui_v2.groq_llm import auto_tag_text, detect_emotion
 
 # Preset "pick a ready-made voice" cards. Each id must match a folder under
 # references/<id>/ containing at least one audio file + matching .lab
@@ -555,10 +556,17 @@ def build_app(
                     elem_id="script-input",
                 )
                 with gr.Row(elem_classes="word-count-row"):
+                    auto_tag_btn = gr.Button("✨ Auto Tag Text", size="sm", variant="secondary", elem_classes=["auto-tag-btn"])
                     word_count = gr.HTML(_word_count_display(None))
                 
                 gr.HTML(QUICK_EMOTION_HTML)
                 gr.HTML(EMOTION_TAGS_HTML)
+
+                auto_tag_btn.click(
+                    fn=auto_tag_text,
+                    inputs=[text_input],
+                    outputs=[text_input]
+                )
 
                 text_input.change(
                     fn=_word_count_display,
@@ -582,7 +590,7 @@ def build_app(
                     gr.Markdown("<label style='font-size:12.5px;font-weight:500;color:var(--muted-c);margin-bottom:8px;display:block'>Emotion</label>")
                     hanna_radio = gr.Dropdown(
                         show_label=False,
-                        choices=[("— None —", "")] + [(e.capitalize(), os.path.abspath(f"reference_audio/hanna/{e}.mp3")) for e in ["Angry", "Excited", "Fearful", "Happy", "Romantic", "Sad", "Serious", "Suspenseful", "neutral", "warm"]],
+                        choices=[("— None —", ""), ("— Auto from text —", "auto")] + [(e.capitalize(), os.path.abspath(f"reference_audio/hanna/{e.lower()}.mp3")) for e in ["angry", "excited", "fearful", "happy", "romantic", "sad", "serious", "suspenseful", "neutral", "warm"]],
                         value="",
                         container=False,
                     )
@@ -734,6 +742,7 @@ def build_app(
             use_memory_cache,
             max_words_per_chunk,
             mode_radio,
+            hanna_emotion,
             progress=gr.Progress(),
         ):
             # Belt-and-suspenders: run_single/run_long_form already turn known
@@ -748,6 +757,14 @@ def build_app(
             # went wrong deeper in the stack.
             try:
                 reference_audio = _resolve_reference_audio(mic_path, upload_path, source)
+                
+                if hanna_emotion:
+                    if hanna_emotion == "auto":
+                        detected = detect_emotion(text)
+                        reference_audio = os.path.abspath(f"reference_audio/hanna/{detected}.mp3")
+                    else:
+                        reference_audio = hanna_emotion
+                        
                 if mode_radio == "Long-form (chunked)":
                     audio, err = run_long_form(
                         text,
@@ -800,6 +817,7 @@ def build_app(
             use_memory_cache,
             max_words_per_chunk,
             mode,
+            hanna_radio,
         ]
 
         generate_btn.click(
