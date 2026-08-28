@@ -41,7 +41,7 @@ HEADER_HTML = """
       <span class="fish-logo-bars">
         <span class="bar bar-1"></span><span class="bar bar-2"></span><span class="bar bar-3"></span>
       </span>
-      <span class="fish-title">AUDIFYZ <span class="fish-title-accent">VOICE CLONER</span></span>
+      <span class="fish-title">VOICE <span class="fish-title-accent">CLONING STUDIO</span></span>
     </div>
   </div>
 </div>
@@ -158,15 +158,15 @@ CUSTOM_CSS = """
        are distinguished purely by border lines, matching the reference
        design's white-on-white panel look without reintroducing the page
        gutters we removed earlier. */
-    --bg: #ffffff;
-    --panel: #ffffff;
-    --panel-2: #f8fafc;
-    --border-c: #e2e8f0;
-    --text-c: #0f172a;
-    --muted-c: #64748b;
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --accent-dark: #1e1b4b;
+    --bg: #0F1114;
+    --panel: #15181D;
+    --panel-2: #1A1D22;
+    --border-c: #2A2E35;
+    --text-c: #EEEFF1;
+    --muted-c: #8B9099;
+    --accent: #E8A33D;
+    --accent-hover: #F3B860;
+    --accent-dark: #3A3F49;
 }
 
 /* ---- Page shell ----
@@ -681,16 +681,16 @@ html, body {
 """
 
 FISH_THEME = gr.themes.Base(
-    primary_hue="blue",
-    secondary_hue="indigo",
-    neutral_hue="slate",
+    primary_hue="orange",
+    secondary_hue="stone",
+    neutral_hue="zinc",
     font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
 ).set(
     block_radius="14px",
     block_shadow="none",
-    button_primary_background_fill="#2563eb",
-    button_primary_background_fill_hover="#1d4ed8",
-    button_primary_text_color="#ffffff",
+    button_primary_background_fill="#E8A33D",
+    button_primary_background_fill_hover="#F3B860",
+    button_primary_text_color="#171106",
     button_large_radius="12px",
     button_large_padding="14px 24px",
     button_small_padding="8px 16px",
@@ -871,6 +871,13 @@ def build_app(
                         interactive=False,
                         visible=False,
                         elem_id="preset-preview-audio",
+                    )
+                with gr.Group(elem_classes=["fish-card"], elem_id="hanna-voice-card"):
+                    gr.Markdown("### 👩 Hanna Emotion Presets", elem_classes=["section-heading"])
+                    hanna_radio = gr.Radio(
+                        show_label=False,
+                        choices=[("— None —", "")] + [(e.capitalize(), os.path.abspath(f"reference_audio/hanna/{e}.mp3")) for e in ["Angry", "Excited", "Fearful", "Happy", "Romantic", "Sad", "Serious", "Suspenseful", "neutral", "warm"]],
+                        value="",
                     )
                 active_source = gr.State("mic")
 
@@ -1140,6 +1147,7 @@ def build_app(
                     "",
                     _voice_status_display("mic", "", mic_path),
                     gr.update(value=None, visible=False),
+                    gr.update(value=""),
                 )
             if upload_path:
                 source = "upload"
@@ -1154,6 +1162,7 @@ def build_app(
                 preset_id if source == "preset" else "",
                 _voice_status_display(source, preset_id, upload_path),
                 gr.update(),
+                gr.update(),
             )
 
         def _on_upload_change(mic_path, upload_path, preset_id):
@@ -1165,6 +1174,7 @@ def build_app(
                     "",
                     _voice_status_display("upload", "", upload_path),
                     gr.update(value=None, visible=False),
+                    gr.update(value=""),
                 )
             if mic_path:
                 source = "mic"
@@ -1179,6 +1189,7 @@ def build_app(
                 preset_id if source == "preset" else "",
                 _voice_status_display(source, preset_id, mic_path),
                 gr.update(),
+                gr.update(),
             )
 
         def _on_preset_change(preset_id, mic_path, upload_path):
@@ -1190,6 +1201,7 @@ def build_app(
                     preset_id,
                     _voice_status_display("preset", preset_id, None),
                     gr.update(value=PRESET_PREVIEW_PATHS.get(preset_id), visible=True),
+                    gr.update(value=""),
                 )
             if mic_path:
                 source = "mic"
@@ -1201,20 +1213,21 @@ def build_app(
                 gr.update(),
                 gr.update(),
                 source,
-                "",
-                _voice_status_display(source, "", mic_path or upload_path),
-                gr.update(value=None, visible=False),
+                preset_id if source == "preset" else "",
+                _voice_status_display(source, preset_id, mic_path),
+                gr.update(),
+                gr.update(),
             )
 
         mic_audio.change(
             fn=_on_mic_change,
             inputs=[mic_audio, upload_audio, preset_radio],
-            outputs=[upload_audio, preset_radio, active_source, reference_id, voice_status, preset_preview],
+            outputs=[upload_audio, preset_radio, active_source, reference_id, voice_status, preset_preview, hanna_radio],
         )
         upload_audio.change(
             fn=_on_upload_change,
             inputs=[mic_audio, upload_audio, preset_radio],
-            outputs=[mic_audio, preset_radio, active_source, reference_id, voice_status, preset_preview],
+            outputs=[mic_audio, preset_radio, active_source, reference_id, voice_status, preset_preview, hanna_radio],
         )
         preset_radio.change(
             fn=_on_preset_change,
