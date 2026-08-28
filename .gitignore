@@ -130,3 +130,12 @@ asr-label*
 !references/John Taylor/**
 !references/Ava Thompson/
 !references/Ava Thompson/**
+
+# Emotion Presets
+# ---------------
+!reference_audio/
+!reference_audio/**
+!reference_audio/**/*.mp3
+!reference_audio/**/*.wav
+!reference_audio/**/*.flac
+!reference_audio/**/*.ogg
