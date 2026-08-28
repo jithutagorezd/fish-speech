@@ -1,5 +1,6 @@
 import os
 import time
+import re
 import logging
 from dotenv import load_dotenv
 from groq import Groq, RateLimitError
@@ -44,19 +45,19 @@ def call_groq(
     max_retries = 3
     for attempt in range(max_retries):
         try:
+            # Prompt Guard models only accept a single user message and max_tokens <= 512
+            combined_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+            safe_max_tokens = min(max_tokens, 512)
+            
             response = client.chat.completions.create(
                 model="meta-llama/llama-prompt-guard-2-86m",
                 messages=[
                     {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    {
                         "role": "user",
-                        "content": prompt
+                        "content": combined_prompt
                     }
                 ],
-                max_tokens=max_tokens,
+                max_tokens=safe_max_tokens,
                 temperature=0.3
             )
 
@@ -69,14 +70,36 @@ def call_groq(
 
         except RateLimitError as e:
             if attempt < max_retries - 1:
-                # Check for retry-after in headers or response, default to 2s
-                retry_after = getattr(e.response, "headers", {}).get("retry-after", 2)
-                try:
-                    sleep_time = float(retry_after)
-                except ValueError:
-                    sleep_time = 2.0
+                headers = getattr(e.response, "headers", {})
                 
-                logger.warning(f"Groq Rate limit hit. Waiting {sleep_time} seconds before retry (Attempt {attempt + 1}/{max_retries})")
+                # 1. Try retry-after header
+                retry_after = headers.get("retry-after")
+                sleep_time = 2.0
+                
+                if retry_after:
+                    try:
+                        sleep_time = float(retry_after)
+                    except ValueError:
+                        pass
+                else:
+                    # 2. Try x-ratelimit-reset-tokens or requests (e.g. "7.66s", "2m59.56s")
+                    reset_tokens = headers.get("x-ratelimit-reset-tokens")
+                    reset_requests = headers.get("x-ratelimit-reset-requests")
+                    
+                    reset_str = reset_tokens or reset_requests
+                    if reset_str:
+                        # Extract seconds if it matches pattern like 7.66s
+                        match = re.search(r'([\d\.]+)s$', reset_str)
+                        if match:
+                            try:
+                                sleep_time = float(match.group(1))
+                            except ValueError:
+                                pass
+                
+                # Add a small buffer to the sleep time
+                sleep_time += 0.5
+                
+                logger.warning(f"Groq Rate limit hit. Waiting {sleep_time:.2f} seconds before retry (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(sleep_time)
             else:
                 logger.error(f"Groq API rate limit error after {max_retries} attempts: {e}")
