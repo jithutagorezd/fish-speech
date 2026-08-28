@@ -634,6 +634,7 @@ def build_app(
             max_words_per_chunk=max_words_per_chunk,
             progress=lambda frac, msg: progress(frac, msg),
         )
+        return audio, err
     import os
     ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     REF_AUDIO_DIR = os.path.join(ROOT_DIR, "reference_audio")
@@ -933,6 +934,16 @@ def build_app(
                         reference_audio = auto_path if auto_path and os.path.exists(auto_path) else None
                     else:
                         reference_audio = hanna_emotion
+                        
+                # If an emotion/reference audio is selected but no text is provided, 
+                # try to read its .lab or .txt file to completely bypass slow Whisper transcription
+                if reference_audio and not reference_text:
+                    base_path = os.path.splitext(reference_audio)[0]
+                    for ext in [".lab", ".txt"]:
+                        if os.path.exists(base_path + ext):
+                            with open(base_path + ext, "r", encoding="utf-8") as f:
+                                reference_text = f.read().strip()
+                            break
                         
                 # We're using reference_audio directly via the dropdowns, so we don't pass reference_id 
                 # (which used to pull from references/ folder instead of reference_audio/ folder).
