@@ -1,7 +1,8 @@
 import os
+import time
 import logging
 from dotenv import load_dotenv
-from groq import Groq
+from groq import Groq, RateLimitError
 
 load_dotenv()
 
@@ -40,33 +41,49 @@ def call_groq(
     if not GROQ_API_KEY:
         return ""
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            max_tokens=max_tokens,
-            temperature=0.3
-        )
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model="meta-llama/llama-prompt-guard-2-86m",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                max_tokens=max_tokens,
+                temperature=0.3
+            )
 
-        content = response.choices[0].message.content
+            content = response.choices[0].message.content
 
-        if content:
-            return content.strip()
+            if content:
+                return content.strip()
 
-        return ""
+            return ""
 
-    except Exception as e:
-        logger.error(f"Groq API error: {e}")
-        return ""
+        except RateLimitError as e:
+            if attempt < max_retries - 1:
+                # Check for retry-after in headers or response, default to 2s
+                retry_after = getattr(e.response, "headers", {}).get("retry-after", 2)
+                try:
+                    sleep_time = float(retry_after)
+                except ValueError:
+                    sleep_time = 2.0
+                
+                logger.warning(f"Groq Rate limit hit. Waiting {sleep_time} seconds before retry (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(sleep_time)
+            else:
+                logger.error(f"Groq API rate limit error after {max_retries} attempts: {e}")
+                return ""
+        except Exception as e:
+            logger.error(f"Groq API error: {e}")
+            return ""
 
 
 def auto_tag_text(text: str) -> str:
