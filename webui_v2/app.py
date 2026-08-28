@@ -35,17 +35,52 @@ PRESET_PREVIEW_PATHS = {
 }
 
 HEADER_HTML = """
-<div class="fish-header">
-  <div class="fish-header-row">
-    <div class="fish-brand">
-      <span class="fish-logo-bars">
-        <span class="bar bar-1"></span><span class="bar bar-2"></span><span class="bar bar-3"></span>
-      </span>
-      <span class="fish-title">VOICE <span class="fish-title-accent">CLONING STUDIO</span></span>
+<div style="margin-bottom: 28px;">
+  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-c);">
+      Voice Synthesis
+    </span>
+  </div>
+  <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; margin: 0; letter-spacing: -0.01em; color: var(--text-c);">
+    Voice Cloning Studio
+  </h1>
+  <p style="color: var(--muted-c); font-size: 13.5px; margin-top: 6px; max-width: 480px;">
+    Write your text, record or upload a voice to clone, and let the emotion detect itself — or set it yourself.
+  </p>
+</div>
+"""
+
+STEP_RAIL_HTML = """
+<div style="padding: 16px 18px 4px; border: 1px solid var(--border-c); border-radius: 10px; background: var(--panel); margin-bottom: 28px;">
+  <div style="display: flex; align-items: center; width: 100%;">
+    <div style="display: flex; align-items: center; flex: 1;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div style="width: 9px; height: 9px; border-radius: 50%; background: var(--accent); border: 1.5px solid var(--accent);"></div>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-c);">Text</span>
+      </div>
+      <div style="height: 1px; flex: 1; background: var(--border-c); margin: 0 8px 18px 8px; position: relative;">
+        <div style="position: absolute; inset: 0; background: var(--accent); transform: scaleX(1); transform-origin: left;"></div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; flex: 1;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div style="width: 9px; height: 9px; border-radius: 50%; background: var(--accent); border: 1.5px solid var(--accent);"></div>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-c);">Voice</span>
+      </div>
+      <div style="height: 1px; flex: 1; background: var(--border-c); margin: 0 8px 18px 8px; position: relative;">
+        <div style="position: absolute; inset: 0; background: var(--accent); transform: scaleX(0); transform-origin: left;"></div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; flex: 0 0 auto;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div style="width: 9px; height: 9px; border-radius: 50%; background: transparent; border: 1.5px solid var(--border-c);"></div>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-c);">Audio</span>
+      </div>
     </div>
   </div>
 </div>
 """
+
 
 # The exact "common tags" list documented for this checkpoint — see
 # checkpoints/s2-pro/README.md, "Fine-Grained Inline Control". S2 Pro accepts
@@ -149,15 +184,9 @@ FOOTER_HTML = """
 """
 
 CUSTOM_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
 :root {
-    /* The app fills the whole browser viewport (see .gradio-container
-       below), so --bg and --panel are deliberately the same white —
-       there's no separate gray page behind a smaller white card. Cards
-       are distinguished purely by border lines, matching the reference
-       design's white-on-white panel look without reintroducing the page
-       gutters we removed earlier. */
     --bg: #0F1114;
     --panel: #15181D;
     --panel-2: #1A1D22;
@@ -167,24 +196,14 @@ CUSTOM_CSS = """
     --accent: #E8A33D;
     --accent-hover: #F3B860;
     --accent-dark: #3A3F49;
+    --font-mono: 'IBM Plex Mono', 'SFMono-Regular', monospace;
 }
 
-/* ---- Page shell ----
-   The page scrolls naturally, like a normal document — no forced single-
-   viewport height, no per-column internal scrolling. That tidy-looking
-   "pin everything to 100dvh, let each column scroll internally" approach
-   fell apart in practice: the Generate-speech column genuinely holds more
-   content than the Voice-input column (textbox, tags, button, advanced
-   settings, output player), so forcing both into the same fixed height
-   just crushed the taller one — clipped text, a barely-visible Advanced
-   Settings section, a collapsed-looking output card, and its own inner
-   scrollbar stacked on top of the browser's outer one. Letting each
-   column size to its own content and scrolling the whole page instead
-   removes all of that in one move. */
 html, body {
     margin: 0 !important;
     background: var(--bg) !important;
 }
+
 .gradio-container {
     max-width: 100% !important;
     width: 100% !important;
@@ -197,9 +216,6 @@ html, body {
     box-sizing: border-box !important;
     background: var(--bg) !important;
     color: var(--text-c) !important;
-    /* Best-effort override of Gradio's own theme tokens, so built-in
-       components (labels, inputs, blocks) inherit this palette even
-       where we haven't targeted them by id/class directly below. */
     --body-background-fill: var(--bg) !important;
     --background-fill-primary: var(--panel) !important;
     --background-fill-secondary: var(--panel-2) !important;
@@ -213,12 +229,21 @@ html, body {
     --button-secondary-text-color: var(--text-c) !important;
     --button-secondary-border-color: var(--border-c) !important;
 }
+
+.centered-container {
+    max-width: 640px !important;
+    margin: 0 auto !important;
+    padding: 24px 0 !important;
+    width: 100% !important;
+}
+
 .gradio-container .block,
 .gradio-container .form {
     background: var(--panel) !important;
     border-color: var(--border-c) !important;
     color: var(--text-c) !important;
 }
+
 .gradio-container textarea,
 .gradio-container input[type="text"],
 .gradio-container input[type="number"],
@@ -232,130 +257,21 @@ html, body {
     color: var(--muted-c) !important;
 }
 
-/* ---- Main layout ----
-   Gradio wraps a Row's columns into a stacked, single-column layout
-   whenever they can't fit side by side at their min_width, which reads
-   as a tall "mobile" page even on a desktop-width window. Force the two
-   main columns to stay side by side down to genuine phone widths — each
-   one now just grows to its own natural content height (see the page
-   shell comment above), so the shorter Voice-input column ends where its
-   content ends instead of being stretched to match the taller one.
-
-   flex-wrap:nowrap is also set on the columns themselves, not just the
-   row: a flex-direction:column container that runs out of vertical room
-   doesn't clip an overflowing child, it wraps it into a second column
-   positioned off to the side instead (this genuinely happened once, when
-   these columns still had a fixed height — a child taller than the
-   column landed a full column-width to the right, needing a horizontal
-   scrollbar to ever reach). Harmless to keep as insurance even without a
-   height constraint forcing the issue. */
-#main-row {
-    flex-wrap: nowrap !important;
-}
-#voice-column, #studio-column {
-    flex-wrap: nowrap !important;
-}
-/* Clear visual separation between the input (left) and output (right)
-   zones. */
-#studio-column {
-    border-left: 1px solid var(--border-c);
-    padding-left: 24px;
-}
-@media (max-width: 640px) {
-    #main-row {
-        flex-wrap: wrap !important;
-    }
-    #studio-column {
-        border-left: none;
-        padding-left: 0;
-        border-top: 1px solid var(--border-c);
-        padding-top: 16px;
-        margin-top: 8px;
-    }
+/* Fix dropdown styling */
+.gradio-dropdown {
+    background: var(--panel-2) !important;
+    border: 1px solid var(--border-c) !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
 }
 
-/* ---- Header banner ---- */
-.fish-header {
-    border-bottom: 1px solid var(--border-c);
-    padding: 10px 4px 18px 4px;
-    margin-bottom: 16px;
-}
-.fish-header-row {
-    display: flex;
-    align-items: center;
-}
-.fish-brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.fish-logo-bars {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    height: 20px;
-}
-.fish-logo-bars .bar {
-    width: 4px;
-    border-radius: 2px;
-    background: var(--accent-dark);
-}
-.fish-logo-bars .bar-1 { height: 12px; }
-.fish-logo-bars .bar-2 { height: 20px; }
-.fish-logo-bars .bar-3 { height: 16px; }
-.fish-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 800;
-    letter-spacing: 0.02em;
-    color: var(--text-c) !important;
-}
-.fish-title-accent {
-    color: var(--accent) !important;
-    font-weight: 800;
-}
-
-/* ---- Step kickers ---- */
-.step-kicker {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--muted-c);
-    margin: 0 0 4px 2px;
-}
-
-/* ---- Headings ---- */
-.column-heading {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.15rem !important;
-    font-weight: 700 !important;
-    color: var(--text-c) !important;
-    margin: 0 0 10px 0 !important;
-}
-.heading-sub {
-    font-weight: 500;
-    color: var(--muted-c);
-    font-size: 0.95rem;
-}
-.section-heading {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700 !important;
-    font-size: 1.05rem !important;
-    margin-bottom: 2px !important;
-    color: var(--text-c) !important;
-}
-
-/* ---- Cards ---- */
 .fish-card {
     background: var(--panel) !important;
     border: 1px solid var(--border-c) !important;
     border-radius: 14px !important;
     box-shadow: none !important;
 }
-/* Nested card (e.g. the "Generated Speech" box inside the Generate panel) —
-   a subtly different fill so it reads as a secondary surface within the
-   card rather than a competing top-level card. */
+
 .fish-card-nested {
     background: var(--panel-2) !important;
     border: 1px solid var(--border-c) !important;
@@ -363,98 +279,50 @@ html, body {
     box-shadow: none !important;
 }
 
-/* ---- Voice source row (record / upload side by side) ---- */
+/* Audio inputs */
 #voice-source-row {
     gap: 12px;
 }
-/* Flex items default to min-width:auto, which refuses to shrink below
-   the content's natural width. An empty upload dropzone is narrow, but
-   the loaded audio player (waveform canvas + play/download/share/trim
-   controls) is intrinsically much wider — without min-width:0 that
-   swap drags the whole #voice-source-row wider, which reflows #main-row
-   and visibly shifts the Generate-speech column left/right. min-width:0
-   on just the outer wrapper isn't enough on its own, since a deeply
-   nested descendant (the controls row, the waveform canvas) can still
-   carry its own content-based min-width floor that bubbles back up —
-   so it's forced to 0 on every descendant too, and overflow:hidden is
-   the hard backstop: nothing inside can ever push past the card's own
-   width no matter what Gradio's internal player renders at. */
-#voice-source-row > .fish-card {
-    flex: 1 1 0% !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-}
 #mic-audio, #upload-audio {
     width: 100% !important;
+    height: 180px;
     max-width: 100% !important;
     min-width: 0 !important;
     overflow: hidden !important;
+    border: 1px dashed var(--border-c) !important;
+    border-radius: 12px !important;
 }
 #mic-audio *, #upload-audio * {
-    min-width: 0 !important;
-    max-width: 100% !important;
+    transition: none !important;
 }
 
-/* ---- Buttons: bigger and more tactile everywhere ---- */
-.gradio-container button {
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease, background .12s ease;
+/* Generate Button */
+#generate-btn {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    height: 52px !important;
+    width: 100% !important;
+    border-radius: 12px !important;
+    margin-top: 16px;
+    background: var(--accent) !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(232, 163, 61, .25);
 }
-.gradio-container button:active {
-    transform: scale(0.97);
+#generate-btn:hover {
+    background: var(--accent-hover) !important;
+    box-shadow: 0 6px 18px rgba(232, 163, 61, .35);
 }
-.gradio-container .lg.secondary,
-.gradio-container button[class*="secondary"] {
-    min-height: 44px !important;
-    padding: 10px 20px !important;
-    font-size: 0.95rem !important;
-    background: var(--panel) !important;
-    color: var(--text-c) !important;
-    border: 1px solid var(--border-c) !important;
-}
-.gradio-container button[class*="secondary"]:hover {
+
+/* Advanced settings */
+#advanced-settings {
     background: var(--panel-2) !important;
-}
-/* Icon-only buttons (record / upload / play toggles inside the audio
-   widget) are tiny by default — give them real tap targets. */
-.gradio-container .icon-button-wrapper button,
-.gradio-container button.icon {
-    min-width: 42px !important;
-    min-height: 42px !important;
-}
-/* The mic/upload/output audio widgets are much narrower now (each voice
-   card is roughly a quarter of the viewport). A row of several 42px
-   icon buttons (play, trim, clear, ...) doesn't fit and can push the
-   Clear/trash button out of the visible row entirely. Scale those three
-   widgets' icon buttons down so the whole toolbar actually fits. */
-#mic-audio .icon-button-wrapper button,
-#mic-audio button.icon,
-#upload-audio .icon-button-wrapper button,
-#upload-audio button.icon,
-#audio-output .icon-button-wrapper button,
-#audio-output button.icon {
-    min-width: 32px !important;
-    min-height: 32px !important;
-}
-.gradio-container button svg {
-    width: 18px;
-    height: 18px;
-}
-/* Destructive actions (clear/remove a recording, etc.) get a distinct
-   tint so they read differently from safe actions like download/play. */
-.gradio-container button[aria-label*="Clear" i],
-.gradio-container button[aria-label*="Remove" i],
-.gradio-container button[aria-label*="Delete" i] {
-    color: #dc2626 !important;
-}
-.gradio-container button[aria-label*="Clear" i]:hover,
-.gradio-container button[aria-label*="Remove" i]:hover,
-.gradio-container button[aria-label*="Delete" i]:hover {
-    background: rgba(220, 38, 38, 0.08) !important;
+    border: 1px solid var(--border-c) !important;
+    border-radius: 12px !important;
+    margin-top: 16px;
 }
 
-/* ---- Emotion tags (full grouped list) ---- */
+/* Emotion tags */
 .emotion-tags {
     display: flex;
     flex-wrap: wrap;
@@ -466,42 +334,15 @@ html, body {
     font-size: 0.78rem;
     padding: 5px 11px;
     border-radius: 999px;
-    background: rgba(37, 99, 235, 0.08);
-    border: 1px solid rgba(37, 99, 235, 0.25);
+    background: rgba(232, 163, 61, 0.08);
+    border: 1px solid rgba(232, 163, 61, 0.25);
     color: var(--text-c);
     cursor: pointer;
 }
 .emotion-tag:hover {
-    background: rgba(37, 99, 235, 0.16);
+    background: rgba(232, 163, 61, 0.16);
 }
 
-.emotion-tag-details { margin-top: 8px; }
-.emotion-tag-details summary {
-    display: inline-block;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--muted-c);
-    cursor: pointer;
-    list-style: none;
-}
-.emotion-tag-details summary::-webkit-details-marker { display: none; }
-.emotion-tag-details summary:hover { color: var(--text-c); }
-.emotion-tag-groups {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-.emotion-tag-group-label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--muted-c);
-    margin-bottom: 3px;
-}
-
-/* ---- Emotion pills (quick row) ---- */
 .emotion-pills {
     display: flex;
     flex-wrap: wrap;
@@ -521,123 +362,18 @@ html, body {
 }
 .emotion-pill:hover { border-color: var(--accent); }
 .emotion-pill-active {
-    background: var(--accent-dark) !important;
-    border-color: var(--accent-dark) !important;
-    color: #ffffff !important;
-}
-
-/* ---- Word count badge ---- */
-.word-badge {
-    display: inline-block;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--muted-c);
-    padding: 2px 4px;
-}
-.longform-nudge {
-    display: inline-block;
-    margin-left: 6px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #b45309;
-    background: rgba(217, 119, 6, 0.08);
-    border: 1px solid rgba(217, 119, 6, 0.3);
-    padding: 3px 9px;
-    border-radius: 999px;
-}
-
-/* ---- Voice card hint ---- */
-.voice-hint {
-    font-size: 0.85rem !important;
-    color: var(--muted-c) !important;
-    margin: 0 0 10px 0 !important;
-    line-height: 1.5 !important;
-}
-
-/* ---- Voice status (near Generate) ---- */
-.voice-status {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--muted-c);
-    margin: 6px 0 2px 2px;
-}
-.voice-status-active {
-    color: var(--accent);
-}
-.voice-status-none {
-    color: #b45309;
-}
-
-/* ---- Generate button ----
-   Deliberately NOT sticky: Advanced settings and the "Generated Speech"
-   card both come after it in the column, and a sticky element pins on
-   top of whatever scrolls underneath it — with an opaque background and
-   z-index, that meant it could visually cover the output card once you
-   scrolled past it, which read as "I can't see the generated audio". */
-#generate-btn {
-    font-size: 1rem !important;
-    font-weight: 700 !important;
-    height: 52px !important;
-    width: 100% !important;
-    border-radius: 12px !important;
-    margin-top: 8px;
     background: var(--accent) !important;
-    border: none !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, .25);
-}
-#generate-btn:hover {
-    background: var(--accent-hover) !important;
-    box-shadow: 0 6px 18px rgba(37, 99, 235, .35);
+    border-color: var(--accent) !important;
+    color: #000000 !important;
 }
 
-/* ---- Advanced settings ----
-   A proper bordered card instead of Gradio's default thin accordion row. */
-#advanced-settings {
-    background: var(--panel-2) !important;
-    border: 1px solid var(--border-c) !important;
-    border-radius: 12px !important;
-    margin-top: 8px;
-    margin-bottom: 8px;
-}
-
-/* ---- Output panel ---- */
 #audio-output {
     border-radius: 12px !important;
     height: 180px;
     background: var(--panel) !important;
-}
-/* Gradio (Svelte) runs a FLIP-style resize animation on its own .block
-   wrapper via the Web Animations API whenever a tracked element's box
-   changes size between renders — visible as --start-top/--start-left/
-   --start-width/--start-height custom properties it sets on itself.
-   That's a JS/WAAPI animation, not a CSS transition, so `transition:
-   none` alone doesn't touch it. FLIP only has something to animate when
-   there's a size delta between the old and new box, so the real fix is
-   giving these widgets a genuinely fixed height (not min-height, which
-   still lets them grow when a recording/upload/result loads) — with no
-   delta, there's nothing left for it to animate. transition: none stays
-   too, as a no-cost second line of defense for anything that IS a plain
-   CSS transition. */
-#audio-output, #audio-output *,
-#mic-audio, #mic-audio *,
-#upload-audio, #upload-audio *,
-#preset-preview-audio, #preset-preview-audio * {
     transition: none !important;
 }
-#mic-audio, #upload-audio {
-    height: 180px;
-}
-#preset-preview-audio {
-    height: 120px;
-    margin-top: 8px;
-}
 
-/* Empty-state message shown until the first generation completes, so the
-   output card doesn't read as broken/blank before anything's happened.
-   Deliberately no border/dropzone styling — this isn't a drop target,
-   just a lightweight placeholder. */
 #output-placeholder {
     display: flex;
     align-items: center;
@@ -652,31 +388,12 @@ html, body {
 }
 #output-placeholder:empty { display: none; }
 
-#regenerate-btn {
-    margin-top: 8px;
-}
-
-/* ---- Error banner ---- */
-.fish-error-banner {
-    background: rgba(220, 38, 38, 0.08);
-    border: 1px solid rgba(220, 38, 38, 0.3);
-    color: #dc2626;
-    font-weight: 600;
-    font-size: 0.88rem;
-    padding: 10px 14px;
-    border-radius: 10px;
-    margin-bottom: 8px;
-}
-#error-box:empty { display: none; }
-
-/* ---- Footer ---- */
-.fish-footer {
-    text-align: center;
-    color: var(--muted-c);
+.word-badge {
+    display: inline-block;
     font-size: 0.78rem;
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border-c);
+    font-weight: 600;
+    color: var(--muted-c);
+    padding: 2px 4px;
 }
 """
 
@@ -819,196 +536,187 @@ def build_app(
         app.load(
             None,
             None,
-            js="() => {const params = new URLSearchParams(window.location.search);if (!params.has('__theme')) {params.set('__theme', '%s');window.location.search = params.toString();}}"
-            % theme,
+            js="() => {const params = new URLSearchParams(window.location.search);if (!params.has('__theme')) {params.set('__theme', 'dark');window.location.search = params.toString();}}"
         )
         app.load(None, None, js=EMOTION_TAG_INSERT_JS)
 
-        # Left: voice input only (record + upload, two separate cards).
-        # Right: script, emotion, generate, advanced settings, and a nested
-        # "Generated Speech" card for the result — mirrors a single
-        # Source -> Generate two-step flow.
-        with gr.Row(equal_height=False, elem_id="main-row"):
-            with gr.Column(scale=1, min_width=320, elem_id="voice-column"):
-                gr.HTML('<p class="step-kicker">Step 1 — Record or upload your voice</p>')
-                gr.Markdown(
-                    '## 🎤 Voice Input <span class="heading-sub">(Cloning)</span>',
-                    elem_classes=["column-heading"],
+        with gr.Column(elem_classes="centered-container"):
+            gr.HTML(STEP_RAIL_HTML)
+
+            # --- STEP 1 ---
+            gr.HTML('<div style="margin-bottom: 10px"><div style="display: flex; align-items: center; gap: 9px;"><span style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;">1</span><span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-c); font-weight: 500;">Text</span></div><h2 style="font-family: \'Space Grotesk\', sans-serif; font-size: 18px; font-weight: 600; color: var(--text-c); margin: 16px 0 0 0;">Text to speech</h2></div>')
+            with gr.Group(elem_classes="fish-card"):
+                text_input = gr.Textbox(
+                    label="Input Text",
+                    placeholder="Paste or type text here. For long documents (3000–5000 words), turn on Long-form in Advanced settings.",
+                    lines=4,
+                    max_lines=30,
+                    show_label=False,
+                    elem_id="script-input",
                 )
-                gr.Markdown(
-                    "Record or upload a short voice sample, or pick a ready-made "
-                    "voice below — whatever you type on the right will be spoken "
-                    "in that voice.",
-                    elem_classes=["voice-hint"],
+                with gr.Row(elem_classes="word-count-row"):
+                    word_count = gr.HTML(_word_count_display(None))
+                
+                gr.HTML(QUICK_EMOTION_HTML)
+                gr.HTML(EMOTION_TAGS_HTML)
+
+                text_input.change(
+                    fn=_word_count_display,
+                    inputs=[text_input],
+                    outputs=[word_count],
                 )
-                with gr.Row(elem_id="voice-source-row"):
-                    with gr.Group(elem_classes=["fish-card"]):
-                        gr.Markdown("### 🎙️ Mic Record", elem_classes=["section-heading"])
-                        mic_audio = gr.Audio(
-                            show_label=False,
-                            type="filepath",
-                            sources=["microphone"],
-                            elem_id="mic-audio",
-                        )
-                    with gr.Group(elem_classes=["fish-card"]):
-                        gr.Markdown("### 📁 Upload File", elem_classes=["section-heading"])
-                        upload_audio = gr.Audio(
-                            show_label=False,
-                            type="filepath",
-                            sources=["upload"],
-                            elem_id="upload-audio",
-                        )
-                with gr.Group(elem_classes=["fish-card"], elem_id="preset-voice-card"):
-                    gr.Markdown("### 🎭 Or Pick a Preset Voice", elem_classes=["section-heading"])
-                    preset_radio = gr.Radio(
+
+            # --- STEP 2 ---
+            gr.HTML('<div style="margin-bottom: 10px; margin-top: 30px;"><div style="display: flex; align-items: center; gap: 9px;"><span style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;">2</span><span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-c); font-weight: 500;">Voice</span></div><h2 style="font-family: \'Space Grotesk\', sans-serif; font-size: 18px; font-weight: 600; color: var(--text-c); margin: 16px 0 4px 0;">Reference voice</h2><p style="font-size: 13.5px; color: var(--muted-c); margin: 0;">Record or upload a reference sample to clone the selected author voice. Emotion is chosen separately for generation.</p></div>')
+            
+            with gr.Row(elem_id="voice-dropdown-row"):
+                with gr.Column(scale=1):
+                    gr.Markdown("<label style='font-size:12.5px;font-weight:500;color:var(--muted-c);margin-bottom:8px;display:block'>Author</label>")
+                    preset_radio = gr.Dropdown(
                         show_label=False,
-                        choices=[("— None, use recording/upload above —", "")] + PRESET_VOICES,
+                        choices=[("— None —", "")] + PRESET_VOICES,
                         value="",
+                        container=False,
                     )
-                    preset_preview = gr.Audio(
-                        show_label=False,
-                        type="filepath",
-                        interactive=False,
-                        visible=False,
-                        elem_id="preset-preview-audio",
-                    )
-                with gr.Group(elem_classes=["fish-card"], elem_id="hanna-voice-card"):
-                    gr.Markdown("### 👩 Hanna Emotion Presets", elem_classes=["section-heading"])
-                    hanna_radio = gr.Radio(
+                with gr.Column(scale=1):
+                    gr.Markdown("<label style='font-size:12.5px;font-weight:500;color:var(--muted-c);margin-bottom:8px;display:block'>Emotion</label>")
+                    hanna_radio = gr.Dropdown(
                         show_label=False,
                         choices=[("— None —", "")] + [(e.capitalize(), os.path.abspath(f"reference_audio/hanna/{e}.mp3")) for e in ["Angry", "Excited", "Fearful", "Happy", "Romantic", "Sad", "Serious", "Suspenseful", "neutral", "warm"]],
                         value="",
+                        container=False,
                     )
-                active_source = gr.State("mic")
+            
+            preset_preview = gr.Audio(
+                show_label=False,
+                type="filepath",
+                interactive=False,
+                visible=False,
+                elem_id="preset-preview-audio",
+            )
+            
+            gr.Markdown("<label style='font-size:12.5px;font-weight:500;color:var(--muted-c);margin:20px 0 8px 0;display:block'>Reference audio</label>")
+            with gr.Row(elem_id="voice-source-row"):
+                mic_audio = gr.Audio(
+                    show_label=False,
+                    type="filepath",
+                    sources=["microphone"],
+                    elem_id="mic-audio",
+                )
+                upload_audio = gr.Audio(
+                    show_label=False,
+                    type="filepath",
+                    sources=["upload"],
+                    elem_id="upload-audio",
+                )
+            
+            voice_status = gr.HTML(
+                _voice_status_display("mic", "", None),
+                elem_id="voice-status",
+            )
+            active_source = gr.State("mic")
 
-            with gr.Column(scale=1, min_width=320, elem_id="studio-column"):
-                gr.HTML('<p class="step-kicker">Step 2 — Generate speech from your cloned voice</p>')
-                gr.Markdown("## ✍️ Generate Speech", elem_classes=["column-heading"])
+            with gr.Row(elem_id="generate-row"):
+                generate_btn = gr.Button(
+                    "🎙️ " + i18n("Generate speech"),
+                    variant="primary",
+                    size="lg",
+                    elem_id="generate-btn",
+                )
 
-                with gr.Group(elem_classes=["fish-card"]):
-                    text_input = gr.Textbox(
-                        label=i18n("Input Text"),
-                        placeholder="Paste or type text here. For long documents (3000–5000 words), turn on Long-form in Advanced settings.",
-                        lines=4,
-                        max_lines=30,
-                        show_label=False,
-                        elem_id="script-input",
+            # --- STEP 3 ---
+            gr.HTML('<div style="margin-bottom: 10px; margin-top: 30px;"><div style="display: flex; align-items: center; gap: 9px;"><span style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;">3</span><span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-c); font-weight: 500;">Audio</span></div><h2 style="font-family: \'Space Grotesk\', sans-serif; font-size: 18px; font-weight: 600; color: var(--text-c); margin: 16px 0 0 0;">Generated audio</h2></div>')
+            
+            with gr.Group(elem_classes=["fish-card-nested"]):
+                error_out = gr.HTML(label=i18n("Error Message"), value="", elem_id="error-box")
+                output_placeholder = gr.HTML(
+                    '<div class="output-placeholder-text">🔈 Your generated audio will appear here</div>',
+                    elem_id="output-placeholder",
+                )
+                audio_out = gr.Audio(
+                    label=i18n("Generated Audio"),
+                    type="numpy",
+                    interactive=False,
+                    autoplay=True,
+                    elem_id="audio-output",
+                )
+                regenerate_btn = gr.Button(
+                    "🔁 Regenerate",
+                    variant="secondary",
+                    size="sm",
+                    elem_id="regenerate-btn",
+                )
+            
+            with gr.Accordion("⚙️ " + i18n("Advanced settings"), open=False, elem_id="advanced-settings"):
+                mode = gr.Radio(
+                    label="Mode",
+                    choices=["Single shot", "Long-form (chunked)"],
+                    value="Single shot",
+                )
+                max_words_per_chunk = gr.Slider(
+                    label="Max words per chunk (long-form only)",
+                    minimum=100,
+                    maximum=500,
+                    value=200,
+                    step=50,
+                )
+                reference_id = gr.Textbox(
+                    label=i18n("Reference ID"),
+                    placeholder="Auto-filled when you pick a preset voice, or leave empty to use the reference audio above",
+                    value="",
+                )
+                transcribe_btn = gr.Button(
+                    "🎤 " + i18n("Auto-transcribe reference audio with Whisper"),
+                    variant="secondary",
+                    size="sm",
+                )
+                reference_text = gr.Textbox(
+                    label=i18n("Reference Text"),
+                    placeholder="Transcription of the reference audio, or use Auto-transcribe. Improves voice-clone accuracy but isn't required.",
+                    lines=2,
+                    value="",
+                )
+                use_memory_cache = gr.Radio(
+                    label=i18n("Use Memory Cache"),
+                    choices=["on", "off"],
+                    value="on",
+                )
+                chunk_length = gr.Slider(
+                    label=i18n("Iterative Prompt Length, 0 means off"),
+                    minimum=100,
+                    maximum=300,
+                    value=200,
+                    step=8,
+                )
+                max_new_tokens = gr.Slider(
+                    label=i18n("Maximum tokens per batch, 0 means no limit"),
+                    minimum=0,
+                    maximum=2048,
+                    value=0,
+                    step=8,
+                )
+                with gr.Row():
+                    top_p = gr.Slider(label="Top-P", minimum=0.7, maximum=0.95, value=0.8, step=0.01)
+                    repetition_penalty = gr.Slider(
+                        label=i18n("Repetition Penalty"),
+                        minimum=1,
+                        maximum=1.2,
+                        value=1.1,
+                        step=0.01,
                     )
-                    word_count = gr.HTML(_word_count_display(None))
-                    text_input.change(
-                        fn=_word_count_display,
-                        inputs=[text_input],
-                        outputs=[word_count],
+                with gr.Row():
+                    temperature = gr.Slider(
+                        label="Temperature",
+                        minimum=0.7,
+                        maximum=1.0,
+                        value=0.8,
+                        step=0.01,
                     )
-
-                    gr.HTML(QUICK_EMOTION_HTML)
-                    gr.HTML(EMOTION_TAGS_HTML)
-
-                    voice_status = gr.HTML(
-                        _voice_status_display("mic", "", None),
-                        elem_id="voice-status",
+                    seed = gr.Number(
+                        label="Seed",
+                        value=0,
+                        precision=0,
                     )
-
-                    generate_btn = gr.Button(
-                        "🎙️ " + i18n("Generate speech"),
-                        variant="primary",
-                        size="lg",
-                        elem_id="generate-btn",
-                    )
-
-                    with gr.Accordion(
-                        "⚙️ " + i18n("Advanced settings"), open=False, elem_id="advanced-settings"
-                    ):
-                        mode = gr.Radio(
-                            label="Mode",
-                            choices=["Single shot", "Long-form (chunked)"],
-                            value="Single shot",
-                        )
-                        max_words_per_chunk = gr.Slider(
-                            label="Max words per chunk (long-form only)",
-                            minimum=100,
-                            maximum=500,
-                            value=200,
-                            step=50,
-                        )
-                        reference_id = gr.Textbox(
-                            label=i18n("Reference ID"),
-                            placeholder="Auto-filled when you pick a preset voice, or leave empty to use the reference audio above",
-                            value="",
-                        )
-                        transcribe_btn = gr.Button(
-                            "🎤 " + i18n("Auto-transcribe reference audio with Whisper"),
-                            variant="secondary",
-                            size="sm",
-                        )
-                        reference_text = gr.Textbox(
-                            label=i18n("Reference Text"),
-                            placeholder="Transcription of the reference audio, or use Auto-transcribe. Improves voice-clone accuracy but isn't required.",
-                            lines=2,
-                            value="",
-                        )
-                        use_memory_cache = gr.Radio(
-                            label=i18n("Use Memory Cache"),
-                            choices=["on", "off"],
-                            value="on",
-                        )
-                        chunk_length = gr.Slider(
-                            label=i18n("Iterative Prompt Length, 0 means off"),
-                            minimum=100,
-                            maximum=300,
-                            value=200,
-                            step=8,
-                        )
-                        max_new_tokens = gr.Slider(
-                            label=i18n("Maximum tokens per batch, 0 means no limit"),
-                            minimum=0,
-                            maximum=2048,
-                            value=0,
-                            step=8,
-                        )
-                        with gr.Row():
-                            top_p = gr.Slider(label="Top-P", minimum=0.7, maximum=0.95, value=0.8, step=0.01)
-                            repetition_penalty = gr.Slider(
-                                label=i18n("Repetition Penalty"),
-                                minimum=1,
-                                maximum=1.2,
-                                value=1.1,
-                                step=0.01,
-                            )
-                        with gr.Row():
-                            temperature = gr.Slider(
-                                label="Temperature",
-                                minimum=0.7,
-                                maximum=1.0,
-                                value=0.8,
-                                step=0.01,
-                            )
-                            seed = gr.Number(
-                                label="Seed",
-                                value=0,
-                                precision=0,
-                            )
-
-                    with gr.Group(elem_classes=["fish-card-nested"]):
-                        gr.Markdown("### 🔊 Generated Speech", elem_classes=["section-heading"])
-                        error_out = gr.HTML(label=i18n("Error Message"), value="", elem_id="error-box")
-                        output_placeholder = gr.HTML(
-                            '<div class="output-placeholder-text">🔈 Your generated audio will appear here</div>',
-                            elem_id="output-placeholder",
-                        )
-                        audio_out = gr.Audio(
-                            label=i18n("Generated Audio"),
-                            type="numpy",
-                            interactive=False,
-                            autoplay=True,
-                            elem_id="audio-output",
-                        )
-                        regenerate_btn = gr.Button(
-                            "🔁 Regenerate",
-                            variant="secondary",
-                            size="sm",
-                            elem_id="regenerate-btn",
-                        )
 
         def dispatch(
             text,
