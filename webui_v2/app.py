@@ -1148,6 +1148,21 @@ def build_app(
             outputs=[mic_audio, upload_audio, active_source, reference_id, voice_status, preset_preview, hanna_radio],
         )
 
+        def _on_emotion_change(emotion_path, preset_id):
+            if emotion_path and emotion_path != "auto":
+                return gr.update(value=emotion_path, visible=True)
+            elif preset_id:
+                emotions = AUTHOR_EMOTIONS.get(preset_id, [])
+                preview_audio = emotions[0][1] if emotions else None
+                return gr.update(value=preview_audio, visible=bool(preview_audio))
+            return gr.update(value=None, visible=False)
+
+        hanna_radio.change(
+            fn=_on_emotion_change,
+            inputs=[hanna_radio, preset_radio],
+            outputs=[preset_preview],
+        )
+
         gr.HTML(FOOTER_HTML)
 
     return app
