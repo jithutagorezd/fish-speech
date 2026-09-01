@@ -668,8 +668,10 @@ def build_app(
         )
         app.load(None, None, js=EMOTION_TAG_INSERT_JS)
 
-        with gr.Column(elem_classes="centered-container"):
-            gr.HTML(STEP_RAIL_HTML)
+        with gr.Tabs():
+            with gr.Tab("🎙️ Generate Speech"):
+                with gr.Column(elem_classes="centered-container"):
+                    gr.HTML(STEP_RAIL_HTML)
 
             # --- STEP 1 ---
             gr.HTML('<div style="margin-bottom: 10px"><div style="display: flex; align-items: center; gap: 9px;"><span style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;">1</span><span style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-c); font-weight: 500;">Text</span></div><h2 style="font-family: \'Space Grotesk\', sans-serif; font-size: 18px; font-weight: 600; color: var(--text-c); margin: 16px 0 0 0;">Text to speech</h2></div>')
@@ -1162,6 +1164,79 @@ def build_app(
             inputs=[hanna_radio, preset_radio],
             outputs=[preset_preview],
         )
+
+            with gr.Tab("➕ Create Voice"):
+                with gr.Column(elem_classes="centered-container"):
+                    gr.HTML('<h2 style="font-family: \'Space Grotesk\', sans-serif; font-size: 22px; font-weight: 700; color: var(--text-c); margin: 0 0 8px 0;">Create Your Voice</h2><p style="color: var(--muted-c); font-size: 14px; margin-bottom: 24px;">Upload voice samples for different emotions to create your own voice profile. At least "Neutral" is required.</p>')
+                    
+                    voice_name_input = gr.Textbox(label="Voice Name (e.g., your_name)", placeholder="No spaces or special characters", lines=1)
+                    
+                    EMOTIONS_DATA = [
+                        ("Neutral", "Every day, the city operates on a steady rhythm. People commute to work, complete their tasks, and return home by evening. Weather patterns shift with the seasons, businesses open and close, and traffic flows through familiar intersections. There is no particular urgency to any of it — simply the consistent movement of life proceeding as expected. Reports are filed, meetings are held, and decisions are made based on available information. The process is straightforward and methodical. Nothing about today stands apart from yesterday, and tomorrow is expected to follow in much the same way. It is, by all measures, an ordinary day — functional, predictable, and unremarkable in the best possible sense."),
+                        ("Warm", "Welcome — truly, genuinely welcome. This is a place where you belong, where your presence matters, and where the door is always open. Whether you've been here before or this is your very first time, know that you are seen, valued, and appreciated exactly as you are. Pull up a chair, settle in, and let yourself breathe. There's no rush here, no pressure, no judgment. Just good company, honest conversation, and the simple comfort of being among people who care. Whatever brought you here today, we're glad it did. Life is so much richer when we share it with one another — and right now, in this moment, we are so very glad to share it with you."),
+                        ("Happy", "Oh, what a magnificent day it is! The sun is doing its absolute best up there, the birds seem to have rehearsed something special just for this morning, and everything — everything — feels like it's smiling right along with you. Have you ever noticed how good news seems to make the coffee taste better, the commute feel shorter, and even the most mundane tasks feel oddly enjoyable? That's the magic of a truly happy day. It bubbles up from somewhere deep inside and spills out into every corner of your world. Laugh a little louder today. Smile at a stranger. Dance, if the mood strikes — and honestly, let it strike. Joy like this deserves to be celebrated fully and without apology."),
+                        ("Sad", "There are days when the weight of missing someone becomes almost too much to carry quietly. You move through the familiar spaces — the kitchen, the hallway, the chair by the window — and everywhere you look, there is the echo of someone who is no longer there. It's not dramatic, not loud. It's soft, and slow, and persistent. A song comes on the radio and suddenly your chest is full of something that has no name. Grief doesn't follow a schedule. It arrives uninvited, lingers in the small things, and reminds you that love, even when it hurts, is the most human thing we carry. And so you sit with it, gently, because that's all you can do."),
+                        ("Angry", "Enough. That word — enough — has been building for a long time, and it is finally here. You were patient. You gave chances that weren't deserved, extended grace that was exploited, and stayed silent when you should have spoken. But there is a limit to how long a person can watch injustice unfold before something inside them refuses to stay quiet any longer. This is that moment. The truth is coming out — not with cruelty, but with clarity and force. Every lie, every dismissal, every moment of being made to feel small — it all ends now. This isn't about anger for its own sake. This is about reclaiming what was taken and making absolutely certain it never happens again."),
+                        ("Fearful", "Something is wrong. It's hard to explain exactly — there's no obvious reason, no clear threat — but the feeling is undeniable. A quiet that's too quiet. A stillness that feels less like calm and more like the moment just before something breaks. Your pulse quickens without permission. Your eyes move to every shadow, every corner, every flicker at the edge of your vision. You try to steady your breath, but it keeps catching. The rational part of your brain says everything is fine. The rest of you is not convinced. You stand very still, listening — straining to hear anything that might explain this cold, creeping unease that has settled into your bones and refuses, absolutely refuses, to let go."),
+                        ("Excited", "It's here! It is finally, actually, undeniably here — the thing you've been waiting for, planning for, counting down to for longer than you care to admit! And oh, the wait was absolutely worth it because right now, in this very moment, everything feels electric. Your mind is running ten steps ahead, imagining all the possibilities, all the moments yet to come. The energy is almost impossible to contain — you want to tell everyone, celebrate everything, and soak up every single second of this feeling. This is what it means to be fully alive — completely present, completely thrilled, completely invested in what's unfolding right in front of you. Don't hold back. Dive in headfirst. This kind of excitement doesn't come along every day, and it deserves every ounce of your enthusiasm."),
+                        ("Romantic", "There are moments that don't need grand gestures or carefully chosen words — moments that exist simply in the quiet between two people who truly know each other. The way you reach for my hand without thinking. The sound of your laugh from the next room. The particular way you look at me sometimes, like I am somehow exactly where I am supposed to be. I don't always have the right language for what I feel, but I know it lives in the small things — in shared mornings, and the way time softens when you're near. You have changed the shape of my ordinary days in the most extraordinary way, and I am grateful, deeply and quietly grateful, for every single moment that is ours."),
+                        ("Suspenseful", "The door at the end of the hallway had been closed for three days. Nobody talked about it. Nobody went near it. But tonight, something shifted — a sound, faint and low, like a breath that didn't belong. She pressed her back against the wall, heart hammering, eyes locked on the thin strip of darkness beneath that door. The lights flickered once. Twice. Then died completely. In the absolute dark, she heard it again — closer now. Much closer. Her phone was in the other room. The exit was behind her. Whatever was on the other side of that door knew exactly where she was. And in the silence that followed, the most terrifying realization settled over her: it wasn't coming. It was already there."),
+                        ("Serious", "What we choose in moments like these defines not just who we are, but who we will become. History does not remember the comfortable choices — the safe paths taken when courage was inconvenient, the truths left unspoken because silence was easier. History remembers the people who stood up when standing was costly, who spoke when speaking carried risk, who chose principle over comfort at a time when most were looking the other way. This is that kind of moment. The weight of it is real, and it should be felt. Because some decisions cannot be undone, some words cannot be taken back, and some opportunities to do what is right appear only once. Choose carefully. Choose honestly. And choose with full awareness of what is truly at stake.")
+                    ]
+                    
+                    audio_inputs = []
+                    
+                    with gr.Group(elem_classes="fish-card"):
+                        for emotion_name, script_text in EMOTIONS_DATA:
+                            with gr.Accordion(f"🎙️ {emotion_name}" + (" (Required)" if emotion_name == "Neutral" else ""), open=(emotion_name == "Neutral")):
+                                gr.Markdown(f"> {script_text}")
+                                audio_in = gr.Audio(sources=["upload", "microphone"], type="filepath", label=f"{emotion_name} Audio", elem_id=f"audio-{emotion_name.lower()}")
+                                audio_inputs.append(audio_in)
+                    
+                    save_btn = gr.Button("💾 Save Voice", variant="primary", size="lg")
+                    save_status = gr.HTML("")
+                    
+                    def handle_save_voice(v_name, *audios):
+                        if not v_name or not v_name.strip():
+                            return "<span style='color: #ef4444;'>Error: Voice Name is required.</span>", gr.update()
+                        
+                        import re
+                        import shutil
+                        clean_name = re.sub(r'[^a-zA-Z0-9_]', '', v_name.strip().replace(' ', '_')).lower()
+                        if not clean_name:
+                            return "<span style='color: #ef4444;'>Error: Invalid Voice Name.</span>", gr.update()
+                            
+                        if not audios[0]: # Neutral is required
+                            return "<span style='color: #ef4444;'>Error: Neutral audio is required.</span>", gr.update()
+                            
+                        voice_dir = os.path.join(REF_AUDIO_DIR, clean_name)
+                        os.makedirs(voice_dir, exist_ok=True)
+                        
+                        saved_emotions = []
+                        for i, (emotion_name, _) in enumerate(EMOTIONS_DATA):
+                            if audios[i]:
+                                src = audios[i]
+                                ext = os.path.splitext(src)[1] or '.wav'
+                                dst = os.path.join(voice_dir, f"{emotion_name.lower()}{ext}")
+                                shutil.copy2(src, dst)
+                                saved_emotions.append((emotion_name, dst))
+                                
+                                txt_dst = os.path.join(voice_dir, f"{emotion_name.lower()}.txt")
+                                with open(txt_dst, "w", encoding="utf-8") as f:
+                                    f.write(EMOTIONS_DATA[i][1])
+                                    
+                        saved_emotions.sort(key=lambda x: x[0])
+                        AUTHOR_EMOTIONS[clean_name] = saved_emotions
+                        
+                        author_choices = [("— None —", "")] + [(k.capitalize(), k) for k in sorted(AUTHOR_EMOTIONS.keys())]
+                        
+                        return f"<span style='color: #10b981;'>Success: Voice '{clean_name}' saved! You can now use it in the Generate Speech tab.</span>", gr.update(choices=author_choices)
+
+                    save_btn.click(
+                        fn=handle_save_voice,
+                        inputs=[voice_name_input] + audio_inputs,
+                        outputs=[save_status, preset_radio]
+                    )
 
         gr.HTML(FOOTER_HTML)
 

@@ -117,23 +117,24 @@ def call_groq(
 
 def auto_tag_text(text: str) -> str:
     """
-    Uses Llama to insert [pause] tags into the text.
+    Uses an LLM to insert creative emotion and pacing tags into the text.
     The original words must not be changed.
     """
 
     system_prompt = (
         "You are a TTS (Text-to-Speech) script editor.\n\n"
-        "Your task is ONLY to insert [pause] tags into the "
-        "provided text where natural speech pauses should occur.\n\n"
+        "Your task is to creatively insert appropriate emotion, pacing, and breath tags "
+        "into the provided text to make the speech sound natural and expressive.\n\n"
+        "Feel free to use any descriptive tag inside brackets (e.g., [sigh], [laughing], [whispering], [clearing throat], [pause], [emphasis], etc.). "
+        "Be creative and use tags that best fit the mood and context of the text.\n\n"
         "Rules:\n"
         "1. Do NOT change any original words.\n"
         "2. Do NOT remove any original words.\n"
         "3. Do NOT rewrite or paraphrase the text.\n"
-        "4. ONLY insert [pause] tags.\n"
-        "5. Use [pause] after sentences and important clauses "
-        "when a natural speech pause is appropriate.\n"
-        "6. Do not add explanations.\n"
-        "7. Return ONLY the final tagged text."
+        "4. Enclose ONLY the tags in square brackets [like this]. Do NOT wrap the actual spoken text in brackets.\n"
+        "5. Insert tags *between* words or sentences.\n"
+        "6. Do not overuse tags; add them only where they naturally fit the context and emotion of the text.\n"
+        "7. Return ONLY the final tagged text without any explanations."
     )
 
     prompt = f"Text to tag:\n{text}"
