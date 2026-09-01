@@ -47,7 +47,7 @@ def call_groq(
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model="poolside/laguna-xs-2.1:free",
+                model="inclusionai/ling-3.0-flash-fin:free",
                 messages=[
                     {
                         "role": "system",
