@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from fish_speech.models.text2semantic.inference import load_model
+
 from fish_speech.models.text2semantic.llama import find_multiple
 
 ##### Quantization Primitives ######
@@ -445,6 +445,7 @@ def quantize(checkpoint_path: Path, mode: str, groupsize: int, timestamp: str) -
     print("Loading model ...")
     t0 = time.time()
 
+    from fish_speech.models.text2semantic.inference import load_model
     model, _ = load_model(
         checkpoint_path=checkpoint_path,
         device=device,
